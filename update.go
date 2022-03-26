@@ -49,6 +49,15 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// We only react to new activities for now
+	if webhook.AspectType != "create" {
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`ignoring non-create webhook`)); err != nil {
+			log.Println(err)
+		}
+		return
+	}
+
 	client := NewClient(token)
 	service := strava.NewActivitiesService(client)
 	activity, err := service.Get(webhook.ObjectID).Do()
