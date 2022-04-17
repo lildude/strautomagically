@@ -12,7 +12,7 @@ import (
 )
 
 // https://developers.strava.com/docs/webhooks/#event-data
-type WebhookRequest struct {
+type webhookRequest struct {
 	SubscriptionID int64   `json:"subscription_id"`
 	OwnerID        int64   `json:"owner_id"`
 	ObjectID       int64   `json:"object_id"`
@@ -29,7 +29,7 @@ type updates struct {
 	Authorized bool   `json:"authorized,omitempty"`
 }
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request) {
+func updateHandler(w http.ResponseWriter, r *http.Request) {
 	token := os.Getenv("STRAVA_ACCESS_TOKEN")
 	if token == "" {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -39,7 +39,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var webhook WebhookRequest
+	var webhook webhookRequest
 	body, _ := ioutil.ReadAll(r.Body)
 	if err := json.Unmarshal([]byte(body), &webhook); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

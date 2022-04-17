@@ -7,9 +7,9 @@ import (
 	"net/http"
 )
 
-const ChallengeKey = "hub.challenge"
+const challengeKey = "hub.challenge"
 
-type CallbackResponse struct {
+type callbackResponse struct {
 	Challenge string `json:"hub.challenge"`
 }
 
@@ -17,12 +17,12 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	challenge := r.URL.Query().Get(ChallengeKey)
 	if challenge == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		if _, err := w.Write([]byte(fmt.Sprintf("missing query param: %s\n", ChallengeKey))); err != nil {
+		if _, err := w.Write([]byte(fmt.Sprintf("missing query param: %s\n", challengeKey))); err != nil {
 			log.Println(err)
 		}
 		return
 	}
-	resp, err := json.Marshal(CallbackResponse{
+	resp, err := json.Marshal(callbackResponse{
 		Challenge: challenge,
 	})
 

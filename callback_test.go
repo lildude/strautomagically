@@ -10,12 +10,12 @@ import (
 func TestSuccessfulCallback(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=mychallenge", nil)
 	w := httptest.NewRecorder()
-	CallbackHandler(w, req)
+	callbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-			t.Errorf("expected error to be nil got %v", err)
+		t.Errorf("expected error to be nil got %v", err)
 	}
 
 	if res.StatusCode != http.StatusOK {
@@ -31,7 +31,7 @@ func TestSuccessfulCallback(t *testing.T) {
 func TestMissingChallenge(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe", nil)
 	w := httptest.NewRecorder()
-	CallbackHandler(w, req)
+	callbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
@@ -48,5 +48,3 @@ func TestMissingChallenge(t *testing.T) {
 		t.Errorf("expected '%s' got '%v'", expected, string(data))
 	}
 }
-
-
