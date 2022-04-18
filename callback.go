@@ -32,14 +32,14 @@ var oauthConfig = &oauth2.Config{
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	// If we already have an auth token we know this is a webhook subscription request or oauth callback
 	cache := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	authToken := &oauth2.Token{}
 	at, err := cache.Get("strava_auth_token")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	if at != "" {
-		authToken := &oauth2.Token{}
-		err = json.Unmarshal([]byte(fmt.Sprint(at)), authToken)
+		err = json.Unmarshal([]byte(fmt.Sprint(at)), &authToken)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -47,7 +47,11 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stateToken := os.Getenv("STATE_TOKEN")
-	r.ParseForm()
+	err = r.ParseForm()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	state := r.Form.Get("state")
 	if state != "" {
 		if state != stateToken {
@@ -82,7 +86,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		return
-	} else if authToken := os.Getenv("STRAVA_AUTH_TOKEN"); authToken == "" {
+	} else if authToken.AccessToken == "" {
 		u := oauthConfig.AuthCodeURL(stateToken)
 		fmt.Println("Redirecting to", u)
 		http.Redirect(w, r, u, http.StatusFound)
