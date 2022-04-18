@@ -34,3 +34,7 @@ register: app_url
 	# 	-F 'verify_token=STRAVA' \
 	# 	-F "callback_url=${URL}" \
 	# 	https://api.strava.com/api/v3/push_subscriptions
+
+.PHONY: heroku-local
+heroku-local:
+	go build -o bin/strautomagically -v && heroku local --port 8080
