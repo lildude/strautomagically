@@ -73,20 +73,24 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		token, err := oauthConfig.Exchange(context.Background(), code)
 		if err != nil {
+			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		athlete, ok := token.Extra("athlete").(map[string]interface{})
 		if !ok {
+			log.Println("unable to get athete info", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
 		t, err := json.Marshal(&token)
 		if err != nil {
+			log.Println("unable to marshal token", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		err = cache.Set("strava_auth_token", string(t))
 		if err != nil {
+			log.Println("unable to store auth token", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		log.Printf("Successfully authenticated: %s", athlete["username"])
