@@ -16,23 +16,23 @@ type RedisCache struct {
 	ctx  context.Context
 }
 
-func NewRedisCache(addr string) Cache {
+func NewRedisCache(addr string) (Cache, error) {
 	opt, err := redis.ParseURL(addr)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	ctx := context.Background()
 	client := redis.NewClient(opt)
 
 	_, err = client.Ping(ctx).Result()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	return &RedisCache{
 		conn: client,
 		ctx:  ctx,
-	}
+	}, nil
 }
 
 func (rc *RedisCache) Set(key string, value interface{}) error {
