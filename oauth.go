@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -33,36 +31,25 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	authToken, err := cache.GetToken()
+	if err != nil {
+		log.Printf("Unable to get token: %s", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 	if state == "" {
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			log.Printf("Unable to connect to redis: %s", err)
 			return
 		}
-		authToken := &oauth2.Token{}
-		at, err := cache.Get("strava_auth_token")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Println(err)
-			return
-		}
-		if at != "" {
-			err = json.Unmarshal([]byte(fmt.Sprint(at)), &authToken)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				log.Println(err)
-				return
-			}
-		}
 
 		if authToken.AccessToken == "" {
 			u := oauthConfig.AuthCodeURL(stateToken)
 			log.Println("Redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
+		} else {
+			http.Redirect(w, r, "/", http.StatusFound)
 		}
-		http.Redirect(w, r, "/", http.StatusFound)
 	} else {
 		if state != stateToken {
 			http.Error(w, "State invalid", http.StatusBadRequest)
@@ -82,15 +69,9 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("unable to get athete info", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-
-		t, err := json.Marshal(&token)
+		err = cache.SetToken(token)
 		if err != nil {
-			log.Println("unable to marshal token", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-		err = cache.Set("strava_auth_token", string(t))
-		if err != nil {
-			log.Println("unable to store auth token", err)
+			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		log.Printf("Successfully authenticated: %s", athlete["username"])
