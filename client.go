@@ -1,20 +1,43 @@
 package main
 
 import (
+	"context"
+	"log"
 	"net/http"
-	"time"
 
-	strava "github.com/strava/go.strava"
+	"github.com/lildude/strautomagically/internal/cache"
+	"github.com/lildude/strautomagically/internal/strava"
 )
 
 // Transport can be overridden for the purpose of testing.
 var Transport http.RoundTripper = &http.Transport{}
+var ctx = context.Background()
 
-func NewClient(token string) *strava.Client {
-	httpClient := &http.Client{
-		Transport: Transport,
-		Timeout:   2 * time.Second,
+func newStravaClient() *strava.APIClient {
+	authToken, err := cache.GetToken()
+	if err != nil {
+		log.Printf("Unable to get token: %s", err)
+		return nil
+	}
+	// The Oauth2 library handles refreshing the token if it's expired.
+	tokenSource := oauthConfig.TokenSource(context.Background(), authToken)
+	cfg := strava.NewConfiguration()
+	cfg.HTTPClient = &http.Client{Transport: Transport}
+	ctx = context.WithValue(ctx, strava.ContextOAuth2, tokenSource)
+
+	// Update our saved token
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		panic(err)
+	}
+	if newToken.AccessToken != authToken.AccessToken {
+		err = cache.SetToken(newToken)
+		if err != nil {
+			log.Printf("Unable to store token: %s", err)
+			return nil
+		}
+		log.Println("Updated token")
 	}
 
-	return strava.NewClient(token, httpClient)
+	return strava.NewAPIClient(cfg)
 }
