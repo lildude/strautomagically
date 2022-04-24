@@ -1,25 +1,16 @@
 include .env
 
-.PHONY: strava_token
-strava_token:
-	$(if ${STRAVA_CLIENT_ID},,$(error must set STRAVA_CLIENT_ID in .env))
-	$(if ${STRAVA_CLIENT_SECRET},,$(error must set STRAVA_CLIENT_SECRET in .env))
-	@echo "Getting STRAVA_ACCESS_TOKEN"
-	oauth2-cli \
-  -scope activity:read_all,activity:write \
-  -id ${STRAVA_CLIENT_ID} \
-  -secret ${STRAVA_CLIENT_SECRET} \
-  -auth https://www.strava.com/oauth/authorize \
-  -token https://www.strava.com/oauth/token
-
 .PHONY: app_url
 app_url:
 	$(eval export URL=https://$$(shell heroku domains | tail -1	)/)
 
 .PHONY: heroku
-heroku:
-	$(if ${STRAVA_ACCESS_TOKEN},,$(error must set STRAVA_ACCESS_TOKEN in .env))
-	heroku config:set STRAVA_ACCESS_TOKEN=${STRAVA_ACCESS_TOKEN}
+heroku: app_url
+	$(if ${STRAVA_CLIENT_ID},,$(error must set STRAVA_CLIENT_ID in .env))
+	$(if ${STRAVA_CLIENT_SECRET},,$(error must set STRAVA_CLIENT_SECRET in .env))
+	heroku config:set STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID}
+	heroku config:set STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
+	heroku config:set STRAVA_REDIRECT_URI=https://${URL}.herokuapp.com/auth/callback
 
 .PHONY: register
 register: app_url
@@ -38,3 +29,7 @@ register: app_url
 .PHONY: heroku-local
 heroku-local:
 	go build -o bin/strautomagically -v && heroku local --port 8080
+
+.PHONY: update-swagger
+update-swagger:
+	swagger-codegen generate --input-spec internal/strava-swagger-fixed.json --lang go --output internal/generated
