@@ -6,13 +6,13 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 
-	strava "github.com/strava/go.strava"
+	"github.com/antihax/optional"
+	"github.com/lildude/strautomagically/internal/strava"
 )
 
 // https://developers.strava.com/docs/webhooks/#event-data
-type webhookRequest struct {
+type webhookPayload struct {
 	SubscriptionID int64   `json:"subscription_id"`
 	OwnerID        int64   `json:"owner_id"`
 	ObjectID       int64   `json:"object_id"`
@@ -30,110 +30,74 @@ type updates struct {
 }
 
 func updateHandler(w http.ResponseWriter, r *http.Request) {
-	token := os.Getenv("STRAVA_ACCESS_TOKEN")
-	if token == "" {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err := w.Write([]byte(`missing STRAVA_ACCESS_TOKEN`)); err != nil {
-			log.Println(err)
-		}
-		return
-	}
-
-	var webhook webhookRequest
+	var webhook webhookPayload
 	body, _ := ioutil.ReadAll(r.Body)
 	if err := json.Unmarshal([]byte(body), &webhook); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err = w.Write([]byte(`failed to parse webhook request`)); err != nil {
-			log.Println(err)
-		}
-		return
+		log.Println("Unable to unmarshal webhook payload:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	// We only react to new activities for now
 	if webhook.AspectType != "create" {
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`ignoring non-create webhook`)); err != nil {
-			log.Println(err)
-		}
+		log.Println("ignoring non-create webhook")
 		return
 	}
 
-	client := NewClient(token)
-	service := strava.NewActivitiesService(client)
-	activity, err := service.Get(webhook.ObjectID).Do()
+	client := newStravaClient()
+	activity, _, err := client.ActivitiesApi.GetActivityById(ctx, webhook.ObjectID, nil)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		if _, err = w.Write([]byte(`failed to get activity`)); err != nil {
-			log.Println(err)
-		}
-		return
+		log.Println("Unable to get activity", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+
+	log.Println("Activity:", activity.HideFromHome)
+
+	var update strava.UpdatableActivity
+	var msg string
 
 	// TODO: Move these to somewhere more configurable
 	// Mute walks and set shoes
-	if activity.Type == "Walk" {
-		_, err := service.Update(activity.Id).Private(true).Gear("g10043849").Do()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
-				log.Println(err)
-			}
-			return
-		}
-		log.Println("muted walk")
+	if *activity.Type_ == "Walk" {
+		update.HideFromHome = true
+		update.GearId = "g10043849"
+		msg = "Muted walks"
 	}
-
 	// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
-	if activity.Type == "WeightTraining" && activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
-		_, err := service.Update(activity.Id).Private(true).Name("Humane Burpees").Do()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
-				log.Println(err)
-			}
-			return
-		}
-		log.Println("set humane burpees title")
+	if *activity.Type_ == "WeightTraining" && activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
+		update.HideFromHome = true
+		update.Name = "Humane Burpees"
+		msg = "set humane burpees title"
 	}
-
 	// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
-	if activity.Type == "Ride" && activity.ExternalId != "" && activity.ExternalId[0:7] == "trainerroad" {
-		_, err := service.Update(activity.Id).Name("TR: " + activity.Name).Gear("b9880609").Do()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
-				log.Println(err)
-			}
-			return
-		}
-		log.Println("prefixed name of ride with TR and set gear to trainer")
+	if *activity.Type_ == "Ride" && activity.ExternalId != "" && activity.ExternalId[0:7] == "trainerroad" {
+		update.Name = "TR: " + activity.Name
+		update.GearId = "b9880609"
+		msg = "prefixed name of ride with TR and set gear to trainer"
 	}
-
 	// Set gear to b9880609 if activity is a ride and external_id starts with zwift
-	if activity.Type == "VirtualRide" && activity.ExternalId != "" && activity.ExternalId[0:5] == "zwift" {
-		_, err := service.Update(activity.Id).Gear("b9880609").Do()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
-				log.Println(err)
-			}
-			return
-		}
-		log.Println("set gear to trainer")
+	if *activity.Type_ == "VirtualRide" && activity.ExternalId != "" && activity.ExternalId[0:5] == "zwift" {
+		update.GearId = "b9880609"
+		msg = "set gear to trainer"
+	}
+	// Set gear to b10013574 if activity is a ride and not on trainer
+	if *activity.Type_ == "Ride" && !activity.Trainer {
+		update.GearId = "b10013574"
+		msg = "set gear to bike"
 	}
 
-	// Set gear to b10013574 if activity is a ride and not on trainer
-	if activity.Type == "Ride" && !activity.Trainer {
-		_, err := service.Update(activity.Id).Gear("b10013574").Do()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
-				log.Println(err)
-			}
-			return
+	_, _, err = client.ActivitiesApi.UpdateActivityById(
+		ctx, activity.Id,
+		&strava.ActivitiesApiUpdateActivityByIdOpts{Body: optional.NewInterface(update)},
+	)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		if _, err = w.Write([]byte(fmt.Sprintf("%s\n", err))); err != nil {
+			log.Println(err)
 		}
-		log.Println("set gear to bike")
+		return
 	}
+	log.Println(msg)
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(`success`)); err != nil {
