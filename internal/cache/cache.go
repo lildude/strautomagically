@@ -51,14 +51,14 @@ func (rc *RedisCache) Get(key string) (interface{}, error) {
 	}
 }
 
-func GetToken() (*oauth2.Token, error) {
+func GetToken(key string) (*oauth2.Token, error) {
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		return nil, err
 	}
 
 	token := &oauth2.Token{}
-	at, err := cache.Get("strava_auth_token")
+	at, err := cache.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func GetToken() (*oauth2.Token, error) {
 	return token, nil
 }
 
-func SetToken(token *oauth2.Token) error {
+func SetToken(key string, token *oauth2.Token) error {
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		return err
@@ -81,5 +81,5 @@ func SetToken(token *oauth2.Token) error {
 	if err != nil {
 		return err
 	}
-	return cache.Set("strava_auth_token", string(t))
+	return cache.Set(key, string(t))
 }
