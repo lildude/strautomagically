@@ -31,7 +31,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	authToken, err := cache.GetToken()
+	authToken, err := cache.GetToken("strava_auth_token")
 	if err != nil {
 		log.Printf("Unable to get token: %s", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -69,7 +69,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("unable to get athete info", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		err = cache.SetToken(token)
+		err = cache.SetToken("strava_auth_token", token)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
