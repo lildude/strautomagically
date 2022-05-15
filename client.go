@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/lildude/strautomagically/internal/cache"
-	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/strava-swagger"
 	"golang.org/x/oauth2"
 )
 
@@ -17,11 +17,11 @@ import (
 var Transport http.RoundTripper = &http.Transport{}
 var ctx = context.Background()
 
-func newStravaClient() *strava.APIClient {
+func newStravaClient() (*strava.APIClient, error) {
 	authToken, err := getToken("strava_auth_token")
 	if err != nil {
-		log.Printf("Unable to get token: %s", err)
-		return nil
+		log.Printf("unable to get token from redis: %s", err)
+		return nil, err
 	}
 	// The Oauth2 library handles refreshing the token if it's expired.
 	tokenSource := oauthConfig.TokenSource(context.Background(), authToken)
@@ -32,18 +32,19 @@ func newStravaClient() *strava.APIClient {
 	// Update our saved token
 	newToken, err := tokenSource.Token()
 	if err != nil {
-		panic(err)
+		log.Printf("unable to refresh token: %s", err)
+		return nil, err
 	}
 	if newToken.AccessToken != authToken.AccessToken {
 		err = setToken("strava_auth_token", newToken)
 		if err != nil {
-			log.Printf("Unable to store token: %s", err)
-			return nil
+			log.Printf("unable to store token: %s", err)
+			return nil, err
 		}
-		log.Println("Updated token")
+		log.Println("updated token")
 	}
 
-	return strava.NewAPIClient(cfg)
+	return strava.NewAPIClient(cfg), nil
 }
 
 func getToken(key string) (*oauth2.Token, error) {

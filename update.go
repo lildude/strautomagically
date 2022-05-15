@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/antihax/optional"
-	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/strava-swagger"
 )
 
 // https://developers.strava.com/docs/webhooks/#event-data
@@ -44,7 +44,12 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := newStravaClient()
+	client, err := newStravaClient()
+	if err != nil {
+		fmt.Println("unable to create strava client", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
 	activity, _, err := client.ActivitiesApi.GetActivityById(ctx, webhook.ObjectID, nil)
 	if err != nil {
 		log.Println("Unable to get activity", err)
@@ -54,14 +59,14 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Activity:", activity.HideFromHome)
 
 	var update strava.UpdatableActivity
-	var msg string
+	msg := "nothing to do"
 
 	// TODO: Move these to somewhere more configurable
 	// Mute walks and set shoes
 	if *activity.Type_ == "Walk" {
 		update.HideFromHome = true
 		update.GearId = "g10043849"
-		msg = "Muted walks"
+		msg = "muted walk"
 	}
 	// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
 	if *activity.Type_ == "WeightTraining" && activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
