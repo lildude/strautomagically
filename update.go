@@ -33,8 +33,9 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	var webhook webhookPayload
 	body, _ := ioutil.ReadAll(r.Body)
 	if err := json.Unmarshal([]byte(body), &webhook); err != nil {
-		log.Println("Unable to unmarshal webhook payload:", err)
+		log.Println("unable to unmarshal webhook payload:", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// We only react to new activities for now
@@ -46,17 +47,19 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	client, err := newStravaClient()
 	if err != nil {
-		fmt.Println("unable to create strava client", err)
+		log.Println("unable to create strava client", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	activity, _, err := client.ActivitiesApi.GetActivityById(ctx, webhook.ObjectID, nil)
 	if err != nil {
 		log.Println("Unable to get activity", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
-	log.Println("Activity:", activity.HideFromHome)
+	log.Println("Activity:", activity.Name)
 
 	var update strava.UpdatableActivity
 	msg := "nothing to do"
