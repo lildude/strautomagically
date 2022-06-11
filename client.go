@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/lildude/strautomagically/internal/cache"
-	"github.com/lildude/strautomagically/internal/strava-swagger"
+	"github.com/lildude/strava-swagger"
 	"golang.org/x/oauth2"
 )
 

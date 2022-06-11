@@ -8,7 +8,7 @@ import (
 	"net/http"
 
 	"github.com/antihax/optional"
-	"github.com/lildude/strautomagically/internal/strava-swagger"
+	"github.com/lildude/strava-swagger"
 )
 
 // https://developers.strava.com/docs/webhooks/#event-data

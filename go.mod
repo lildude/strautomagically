@@ -8,6 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/joho/godotenv v1.4.0
 	github.com/karupanerura/go-mock-http-response v0.0.0-20171201120521-7c242a447d45
+	github.com/lildude/strava-swagger v0.0.0-20220611105606-98b791d3a5cb
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a
 )
 
