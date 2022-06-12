@@ -73,7 +73,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		log.Printf("Successfully authenticated: %s", athlete["username"])
+		log.Printf("successfully authenticated: %s", athlete["username"])
 		http.Redirect(w, r, "/", http.StatusFound)
+
+		// Subscribe to the activity stream - should this be here?
+		err = Subscribe()
+		if err != nil {
+			log.Println(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
