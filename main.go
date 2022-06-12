@@ -16,8 +16,9 @@ func main() {
 	}
 	http.HandleFunc("/", indexHandler)
 	http.HandleFunc("/auth", authHandler)
-	http.HandleFunc("/callback", callbackHandler)
-	http.HandleFunc("/update", updateHandler)
+	// http.HandleFunc("/callback", callbackHandler)
+	// http.HandleFunc("/update", updateHandler)
+	http.HandleFunc("/webhook", webhookHandler)
 	log.Println("Starting server on port", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
