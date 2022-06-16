@@ -93,6 +93,12 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		update.GearId = "b10013574"
 		msg = "set gear to bike"
 	}
+	// Set title to Warm-up Row if row and less or equal to 10mins
+	if *activity.Type_ == "Rowing" && activity.ElapsedTime <= 600 {
+		update.Name = "Warm-up Row"
+		update.HideFromHome = true
+		msg = "set warm-up row title and muted"
+	}
 
 	_, _, err = client.ActivitiesApi.UpdateActivityById(
 		ctx, activity.Id,
