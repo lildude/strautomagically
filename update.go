@@ -25,8 +25,8 @@ type webhookPayload struct {
 type updates struct {
 	Title      string `json:"title,omitempty"`
 	Type       string `json:"type,omitempty"`
-	Private    bool   `json:"private,omitempty"`
-	Authorized bool   `json:"authorized,omitempty"`
+	Private    string `json:"private,omitempty"`
+	Authorized string `json:"authorized,omitempty"`
 }
 
 func updateHandler(w http.ResponseWriter, r *http.Request) {
