@@ -99,6 +99,26 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		update.HideFromHome = true
 		msg = "set warm-up row title and muted"
 	}
+	// Set title for specific Pete's Plan workouts
+	var title string
+	if *activity.Type_ == "Rowing" {
+		switch activity.Name {
+		case "v250m/1:30r...7 row":
+			title = "Speed Pyramid Row w/ 1.5' RI per 250m work"
+		case "8x500m/3:30r row":
+			title = "8x 500m w/ 3.5' RI Row"
+		case "5x1500m/5:00r row":
+			title = "5x 1500m w/ 5' RI Row"
+		case "4x2000m/5:00r row":
+			title = "4x 2000m w/5' RI Row"
+		case "4x1000m/5:00r row":
+			title = "4x 1000m /5' RI Row"
+		case "v3000m/5:00r...3 row":
+			title = "Waterfall of 3k, 2.5k, 2k w/ 5' RI Row"
+		}
+		update.Name = title
+		msg = fmt.Sprintf("set title to %s", title)
+	}
 
 	_, _, err = client.ActivitiesApi.UpdateActivityById(
 		ctx, activity.Id,
