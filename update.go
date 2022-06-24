@@ -93,13 +93,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		update.GearId = "b10013574"
 		msg = "set gear to bike"
 	}
-	// Set title to Warm-up Row if row and less or equal to 10mins
-	if *activity.Type_ == "Rowing" && activity.ElapsedTime <= 600 {
-		update.Name = "Warm-up Row"
-		update.HideFromHome = true
-		msg = "set warm-up row title and muted"
-	}
-	// Set title for specific Pete's Plan workouts
+	// Set title for specific Pete's Plan workouts and warmups
 	var title string
 	if *activity.Type_ == "Rowing" {
 		switch activity.Name {
@@ -115,6 +109,9 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 			title = "4x 1000m /5' RI Row"
 		case "v3000m/5:00r...3 row":
 			title = "Waterfall of 3k, 2.5k, 2k w/ 5' RI Row"
+		case "5:00 row":
+			title = "Warm-up Row"
+			update.HideFromHome = true
 		}
 		update.Name = title
 		msg = fmt.Sprintf("set title to %s", title)
