@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/antihax/optional"
+	"github.com/lildude/strautomagically/internal/weather"
 	"github.com/lildude/strava-swagger"
 )
 
@@ -115,6 +116,11 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		update.Name = title
 		msg = fmt.Sprintf("set title to %s", title)
+	}
+	// Add weather for activity if no GPS data - assumes we were at home
+	if len(*activity.StartLatlng) == 0 {
+		update.Description = fmt.Sprintf("%s\n\n%s", activity.Description, weather.GetWeather(activity.StartDateLocal, activity.ElapsedTime))
+		msg = "added weather"
 	}
 
 	_, _, err = client.ActivitiesApi.UpdateActivityById(
