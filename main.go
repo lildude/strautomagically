@@ -10,6 +10,10 @@ import (
 )
 
 func main() {
+	if os.Getenv("DYNO") != "" {
+		log.SetFlags(0)
+	}
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
