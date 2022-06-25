@@ -2,29 +2,21 @@ include .env
 
 .PHONY: app_url
 app_url:
-	$(eval export URL=https://$$(shell heroku domains | tail -1	)/)
+	$(eval export URL=https://$$(shell heroku domains | tail -1	))
 
 .PHONY: heroku
 heroku: app_url
 	$(if ${STRAVA_CLIENT_ID},,$(error must set STRAVA_CLIENT_ID in .env))
 	$(if ${STRAVA_CLIENT_SECRET},,$(error must set STRAVA_CLIENT_SECRET in .env))
-	heroku config:set STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID}
-	heroku config:set STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET}
-	heroku config:set STRAVA_REDIRECT_URI=https://${URL}/auth
-
-.PHONY: register
-register: app_url
-	$(if ${STRAVA_CLIENT_ID},,$(error must set STRAVA_CLIENT_ID in .env))
-	$(if ${STRAVA_CLIENT_SECRET},,$(error must set STRAVA_CLIENT_SECRET in .env))
-	@echo "Registering push subscription with Strava"
-	@echo ${URL}
-
-	# curl -XPOST \
-	# 	-F "client_id=${STRAVA_CLIENT_ID}" \
-	# 	-F "client_secret=${STRAVA_CLIENT_SECRET}" \
-	# 	-F 'verify_token=STRAVA' \
-	# 	-F "callback_url=${URL}" \
-	# 	https://api.strava.com/api/v3/push_subscriptions
+	heroku config:set STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID} \
+	STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET} \
+	STRAVA_REDIRECT_URI=${URL}/auth \
+	STRAVA_CALLBACK_URI=${URL}/webhook \
+	STRAVA_VERIFY_TOKEN=${STRAVA_VERIFY_TOKEN} \
+	STATE_TOKEN=${STATE_TOKEN} \
+	OWM_API_KEY=${OWM_API_KEY} \
+	OWM_LAT=${OWM_LAT} \
+	OWM_LON=${OWM_LON}
 
 .PHONY: heroku-local
 heroku-local:
