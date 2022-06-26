@@ -90,22 +90,26 @@ func GetWeather(start_date time.Time, elapsed int32) string {
 		return ""
 	}
 
+	swd := sw.Data[0]
+	ewd := ew.Data[0]
+
 	icon := strings.Trim(sw.Data[0].Weather[0].Icon, "dn")
 	aqi := "?"
 	if len(p.List) > 0 {
 		aqi = aqiIcon[p.List[0].Main.AQI]
 	}
 
+	// TODO: make me templatable
 	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
 	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 49 💚
 
 	weather := fmt.Sprintf("%s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
-		weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Data[0].Weather[0].Description),
-		int(math.Round(sw.Data[0].Temp)), int(math.Round(ew.Data[0].Temp)),
-		int(math.Round(sw.Data[0].FeelsLike)),
-		sw.Data[0].Humidity, ew.Data[0].Humidity,
-		int(math.Round(sw.Data[0].WindSpeed)*3.6), int(math.Round(ew.Data[0].WindSpeed)*3.6),
-		windDirectionIcon(sw.Data[0].WindDeg),
+		weatherIcon[icon], cases.Title(language.BritishEnglish).String(swd.Weather[0].Description),
+		int(math.Round(swd.Temp)), int(math.Round(ewd.Temp)),
+		int(math.Round(swd.FeelsLike)),
+		swd.Humidity, ewd.Humidity,
+		int(math.Round(swd.WindSpeed)*3.6), int(math.Round(ewd.WindSpeed)*3.6),
+		windDirectionIcon(swd.WindDeg),
 		aqi)
 
 	return weather
