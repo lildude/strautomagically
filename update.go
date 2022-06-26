@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/antihax/optional"
 	"github.com/lildude/strautomagically/internal/weather"
@@ -119,8 +120,11 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(*activity.StartLatlng) == 0 {
-		update.Description = fmt.Sprintf("%s\n\n%s", activity.Description, weather.GetWeather(activity.StartDateLocal, activity.ElapsedTime))
-		msg = "added weather"
+		weather := weather.GetWeather(activity.StartDateLocal, activity.ElapsedTime)
+		if weather != "" && !strings.Contains(activity.Description, "AQI") {
+			update.Description = fmt.Sprintf("%s\n\n%s", activity.Description, weather)
+			msg = "added weather"
+		}
 	}
 
 	_, _, err = client.ActivitiesApi.UpdateActivityById(
