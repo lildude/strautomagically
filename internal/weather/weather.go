@@ -85,7 +85,16 @@ func GetWeather(start_date time.Time, elapsed int32) string {
 		5: "🖤", // Very Poor
 	}
 
+	// Return early if we don't have any data
+	if len(sw.Data) == 0 || len(ew.Data) == 0 {
+		return ""
+	}
+
 	icon := strings.Trim(sw.Data[0].Weather[0].Icon, "dn")
+	aqi := "?"
+	if len(p.List) > 0 {
+		aqi = aqiIcon[p.List[0].Main.AQI]
+	}
 
 	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
 	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 49 💚
@@ -97,7 +106,7 @@ func GetWeather(start_date time.Time, elapsed int32) string {
 		sw.Data[0].Humidity, ew.Data[0].Humidity,
 		int(math.Round(sw.Data[0].WindSpeed)*3.6), int(math.Round(ew.Data[0].WindSpeed)*3.6),
 		windDirectionIcon(sw.Data[0].WindDeg),
-		aqiIcon[p.List[0].Main.AQI])
+		aqi)
 
 	return weather
 }
