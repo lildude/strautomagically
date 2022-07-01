@@ -122,11 +122,10 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	if len(*activity.StartLatlng) == 0 {
 		weather := weather.GetWeather(activity.StartDateLocal, activity.ElapsedTime)
 		if weather != "" && !strings.Contains(activity.Description, "AQI") {
-			if activity.Description == "" {
-				update.Description = weather
-			} else {
-				update.Description = fmt.Sprintf("%s\n\n%s", activity.Description, weather)
+			if activity.Description != "" {
+				update.Description = activity.Description + "\n\n"
 			}
+			update.Description += weather
 			msg = "added weather"
 		}
 	}
