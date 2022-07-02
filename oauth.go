@@ -23,8 +23,8 @@ var oauthConfig = &oauth2.Config{
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		log.Printf("Unable to parse form: %s", err)
+		log.Printf("unable to parse form: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -32,46 +32,41 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	stateToken := os.Getenv("STATE_TOKEN")
 	authToken, err := getToken("strava_auth_token")
 	if err != nil {
-		log.Printf("Unable to get token: %s", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("unable to get token: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 	if state == "" {
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			log.Printf("Unable to connect to redis: %s", err)
-			return
-		}
-
 		if authToken.AccessToken == "" {
 			u := oauthConfig.AuthCodeURL(stateToken)
-			log.Println("Redirecting to", u)
+			log.Println("redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
 			http.Redirect(w, r, "/", http.StatusFound)
 		}
 	} else {
 		if state != stateToken {
-			http.Error(w, "State invalid", http.StatusBadRequest)
+			http.Error(w, "state invalid", http.StatusBadRequest)
 		}
 		code := r.Form.Get("code")
 		if code == "" {
-			http.Error(w, "Code not found", http.StatusBadRequest)
+			http.Error(w, "code not found", http.StatusBadRequest)
 		}
 		token, err := oauthConfig.Exchange(context.Background(), code)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 
 		athlete, ok := token.Extra("athlete").(map[string]interface{})
 		if !ok {
 			log.Println("unable to get athete info", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		err = setToken("strava_auth_token", token)
 		if err != nil {
 			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 		log.Printf("successfully authenticated: %s", athlete["username"])
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -80,7 +75,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		err = Subscribe()
 		if err != nil {
 			log.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
 	}
 }
