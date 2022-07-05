@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +16,15 @@ var Transport http.RoundTripper = &http.Transport{}
 var ctx = context.Background()
 
 func newStravaClient() (*strava.APIClient, error) {
-	authToken, err := getToken("strava_auth_token")
+	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	if err != nil {
+		log.Printf("unable to create redis cache: %s", err)
+		return nil, err
+	}
+
+	authToken := &oauth2.Token{}
+	err = cache.GetJSON("strava_auth_token", &authToken)
+
 	if err != nil {
 		log.Printf("unable to get token from redis: %s", err)
 		return nil, err
@@ -36,7 +42,7 @@ func newStravaClient() (*strava.APIClient, error) {
 		return nil, err
 	}
 	if newToken.AccessToken != authToken.AccessToken {
-		err = setToken("strava_auth_token", newToken)
+		err = cache.SetJSON("strava_auth_token", newToken)
 		if err != nil {
 			log.Printf("unable to store token: %s", err)
 			return nil, err
@@ -45,37 +51,4 @@ func newStravaClient() (*strava.APIClient, error) {
 	}
 
 	return strava.NewAPIClient(cfg), nil
-}
-
-func getToken(key string) (*oauth2.Token, error) {
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
-	if err != nil {
-		return nil, err
-	}
-
-	token := &oauth2.Token{}
-	at, err := cache.Get(key)
-	if err != nil {
-		return nil, err
-	}
-	if at != "" {
-		err = json.Unmarshal([]byte(fmt.Sprint(at)), &token)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return token, nil
-}
-
-func setToken(key string, token *oauth2.Token) error {
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
-	if err != nil {
-		return err
-	}
-
-	t, err := json.Marshal(token)
-	if err != nil {
-		return err
-	}
-	return cache.Set(key, string(t))
 }
