@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/lildude/strautomagically/internal/cache"
 	"golang.org/x/oauth2"
 )
 
@@ -30,7 +31,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	authToken, err := getToken("strava_auth_token")
+	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	if err != nil {
+		log.Printf("unable to create redis cache: %s", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	authToken := &oauth2.Token{}
+	err = cache.GetJSON("strava_auth_token", &authToken)
 	if err != nil {
 		log.Printf("unable to get token: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -63,7 +71,8 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("unable to get athete info", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-		err = setToken("strava_auth_token", token)
+
+		err = cache.SetJSON("strava_auth_token", token)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
