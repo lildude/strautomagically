@@ -2,6 +2,8 @@ package weather
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -65,6 +67,23 @@ func TestGetWeather(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("expected %v, got %v", want, got)
+	}
+}
+
+func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
+	client, _, _, teardown := setup() // We're not using the mux as we'll be failing before then
+	defer teardown()
+
+	// Discard logs to avoid polluting test output
+	log.SetOutput(ioutil.Discard)
+
+	got, err := getWeather(client, 0)
+	if err == nil {
+		t.Errorf("expected error, got nil")
+	}
+	want := data{}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected empty struct, got %v", got)
 	}
 }
 
@@ -193,6 +212,19 @@ func TestGetPollutionForAllLevels(t *testing.T) {
 				t.Errorf("aqi %d expected %q, got %q", tt.mock_aqi, tt.want, got)
 			}
 		})
+	}
+}
+
+func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
+	client, _, _, teardown := setup() // We're not using the mux as we'll be failing before then
+	defer teardown()
+
+	// Discard logs to avoid polluting test output
+	log.SetOutput(ioutil.Discard)
+
+	got := getPollution(client, 0, 0)
+	if got != "?" {
+		t.Errorf("expected ?, got %q", got)
 	}
 }
 

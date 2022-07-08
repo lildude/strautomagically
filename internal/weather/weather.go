@@ -65,8 +65,9 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) strin
 	} else {
 		ew, err = getWeather(c, ets)
 		if err != nil {
+			// If we can't get the end weather, just use the start weather
 			log.Println(err)
-			return ""
+			ew = sw
 		}
 	}
 
@@ -116,6 +117,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest("GET", "", nil)
 	if err != nil {
+		log.Println(err)
 		return data{}, err
 	}
 
@@ -132,6 +134,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 
 // getPollution returns the AQI icon for the given period
 func getPollution(c *client.Client, start_date, end_date int64) string {
+	aqi := "?"
 	params := defaultParams()
 	params.Set("start", fmt.Sprintf("%d", start_date))
 	params.Set("end", fmt.Sprintf("%d", end_date))
@@ -140,14 +143,14 @@ func getPollution(c *client.Client, start_date, end_date int64) string {
 	req, err := c.NewRequest("GET", "", nil)
 	if err != nil {
 		log.Println(err)
-		return ""
+		return aqi
 	}
 
 	p := pollution{}
 	_, err = c.Do(context.Background(), req, &p)
 	if err != nil {
 		log.Println(err)
-		return ""
+		return aqi
 	}
 
 	aqiIcon := map[int]string{
@@ -158,7 +161,6 @@ func getPollution(c *client.Client, start_date, end_date int64) string {
 		5: `🖤`, // Very Poor
 	}
 
-	aqi := "?"
 	if len(p.List) > 0 {
 		aqi = aqiIcon[p.List[0].Main.AQI]
 	}
