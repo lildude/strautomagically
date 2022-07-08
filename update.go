@@ -34,16 +34,35 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: check if activityID is already in Redis
-
-	// Create the OAuth http.Client
-	ctx := context.Background()
 	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
+	// See if we've seen this activity before
+	aid, err := cache.Get("strava_activity")
+	if err != nil {
+		log.Printf("unable to get activity id: %s", err)
+	}
+
+	if aid == "" {
+		aid = webhook.ObjectID
+		err = cache.Set("strava_activity", aid)
+		if err != nil {
+			log.Printf("unable to set activity id: %s", err)
+		}
+	}
+
+	if aid != webhook.ObjectID {
+		w.WriteHeader(http.StatusOK)
+		log.Println("ignoring activity", webhook.ObjectID, "as it's not the latest")
+		return
+	}
+
+	// Create the OAuth http.Client
+	ctx := context.Background()
 	authToken := &oauth2.Token{}
 	err = cache.GetJSON("strava_auth_token", &authToken)
 	if err != nil {
@@ -51,9 +70,8 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
+
 	// The Oauth2 library handles refreshing the token if it's expired.
-	// ts := oauth2.TokenSource(ctx, authToken)
-	// tc := oauth2.NewClient(ctx, ts)
 	ts := strava.OauthConfig.TokenSource(context.Background(), authToken)
 	tc := oauth2.NewClient(ctx, ts)
 	surl, _ := url.Parse(strava.BaseURL)
