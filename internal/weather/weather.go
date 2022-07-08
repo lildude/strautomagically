@@ -1,68 +1,113 @@
 package weather
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
+	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
-	owm "github.com/lildude/openweathermap"
+	"github.com/lildude/strautomagically/internal/client"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
-var apiKey = os.Getenv("OWM_API_KEY")
+// weather struct holds just the data we need from the OpenWeatherMap API
+type weather struct {
+	Data []struct {
+		Temp      float64 `json:"temp"`
+		FeelsLike float64 `json:"feels_like"`
+		Humidity  int64   `json:"humidity"`
+		WindSpeed float64 `json:"wind_speed"`
+		WindDeg   int     `json:"wind_deg"`
+		Weather   []struct {
+			Main        string `json:"main"`
+			Icon        string `json:"icon"`
+			Description string `json:"description"`
+		} `json:"weather"`
+	} `json:"data"`
+}
+
+// pollution struct holds just the data we need from the OpenWeatherMap API
+type pollution struct {
+	List []struct {
+		Main struct {
+			AQI int `json:"AQI"`
+		} `json:"main"`
+	} `json:"list"`
+}
 
 // GetWeather returns the weather conditions in a pretty string
-func GetWeather(start_date time.Time, elapsed int32) string {
-	lon, _ := strconv.ParseFloat(os.Getenv("OWM_LON"), 64)
-	lat, _ := strconv.ParseFloat(os.Getenv("OWM_LAT"), 64)
-	coord := &owm.Coordinates{
-		Longitude: lon,
-		Latitude:  lat,
-	}
-
-	// st, _ := time.Parse("2006-01-02T15:04:05Z", start_date)
+func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 	sts := start_date.Unix()
-	ets := sts + int64(elapsed)
+	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
+	ets := end_date.Unix()
 
-	sw, err := owm.NewOneCall("C", "EN", apiKey, []string{})
+	params := url.Values{}
+	params.Add("lat", os.Getenv("OWM_LAT"))
+	params.Add("lon", os.Getenv("OWM_LON"))
+	params.Add("lang", "en")
+	params.Add("units", "metric")
+	params.Add("appid", os.Getenv("OWM_API_KEY"))
+	params.Add("dt", fmt.Sprintf("%d", sts))
+	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
+	c.BaseURL.RawQuery = params.Encode()
+	req, err := c.NewRequest("GET", "", nil)
 	if err != nil {
 		log.Println(err)
+		return ""
 	}
 
-	err = sw.OneCallTimeMachine(coord, sts)
+	// Get weather at start of activity
+	sw := weather{}
+	_, err = c.Do(context.Background(), req, &sw)
 	if err != nil {
 		log.Println(err)
+		return ""
 	}
 
-	ew, err := owm.NewOneCall("C", "EN", apiKey, []string{})
+	// Get weather at end of activity
+	// Only get this if we cross the hour as it'll be the same as the start
+
+	ew := weather{}
+	if start_date.Hour() == end_date.Hour() {
+		ew = sw
+	} else {
+		params.Set("dt", fmt.Sprintf("%d", ets))
+		c.BaseURL.RawQuery = params.Encode()
+		req, err = c.NewRequest("GET", "", nil)
+		if err != nil {
+			log.Println(err)
+			return ""
+		}
+
+		_, err = c.Do(context.Background(), req, &ew)
+		if err != nil {
+			log.Println(err)
+			return ""
+		}
+	}
+
+	// Get pollution data
+	params.Del("dt")
+	params.Set("start", fmt.Sprintf("%d", sts))
+	params.Set("end", fmt.Sprintf("%d", ets))
+	c.BaseURL.Path = "/data/2.5/air_pollution/history"
+	c.BaseURL.RawQuery = params.Encode()
+	req, err = c.NewRequest("GET", "", nil)
 	if err != nil {
 		log.Println(err)
+		return ""
 	}
 
-	err = ew.OneCallTimeMachine(coord, ets)
+	p := pollution{}
+	_, err = c.Do(context.Background(), req, &p)
 	if err != nil {
 		log.Println(err)
-	}
-
-	p, err := owm.NewPollution(apiKey)
-	if err != nil {
-		log.Println(err)
-	}
-
-	params := &owm.PollutionParameters{
-		Location: *coord,
-		Path:     "/history",
-		Start:    sts,
-		End:      ets,
-	}
-
-	if err := p.PollutionByParams(params); err != nil {
-		log.Println(err)
+		return ""
 	}
 
 	weatherIcon := map[string]string{
@@ -101,7 +146,7 @@ func GetWeather(start_date time.Time, elapsed int32) string {
 
 	// TODO: make me templatable
 	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
-	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 49 💚
+	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
 
 	weather := fmt.Sprintf("%s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
 		weatherIcon[icon], cases.Title(language.BritishEnglish).String(swd.Weather[0].Description),
@@ -120,7 +165,7 @@ func GetWeather(start_date time.Time, elapsed int32) string {
 // so we point the arrow in the direction it is going.
 func windDirectionIcon(deg int) string {
 	switch {
-	case (deg >= 338 && deg <= 22):
+	case (deg >= 338 && deg <= 360) || (deg >= 0 && deg <= 22):
 		return "↓"
 	case (deg >= 23 && deg <= 67):
 		return "↙️"
