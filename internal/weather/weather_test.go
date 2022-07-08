@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -119,6 +120,59 @@ func TestGetWeatherDiffHours(t *testing.T) {
 	want := "☀️ Clear Sky | 🌡 19-23°C | 👌 16°C | 💦 64-94% | 💨 14-3km/h ↓ | AQI 💚\n"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
+	}
+}
+
+func TestGetWeather(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	lat_in := "51.509865"
+	lon_in := "-0.118092"
+	appid_in := "123456789"
+	os.Setenv("OWM_LAT", lat_in)
+	os.Setenv("OWM_LON", lon_in)
+	os.Setenv("OWM_API_KEY", appid_in)
+	start_in := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC).Unix()
+	start_out := strconv.FormatInt(start_in, 10)
+
+	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		lat := q.Get("lat")
+		lon := q.Get("lon")
+		appid := q.Get("appid")
+		units := q.Get("units")
+		lang := q.Get("lang")
+		dt := q.Get("dt")
+		// Confirm we receive the right query params
+		if lat != lat_in || lon != lon_in || appid != appid_in || units != "metric" || lang != "en" || dt != start_out {
+			t.Errorf("Expected lat=%s, lon=%s, appid=%s, units=metric, lang=en, dt=%s, got lat=%s, lon=%s, appid=%s, units=%s, lang=%s, dt=%s", lat_in, lon_in, appid_in, start_out, lat, lon, appid, units, lang, dt)
+		}
+
+		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
+		fmt.Fprintln(w, resp)
+	})
+
+	got, err := getWeather(client, start_in)
+	if err != nil {
+		t.Errorf("expected nil error, got %q", err)
+	}
+	want := data{
+		Temp:      19.13,
+		FeelsLike: 16.44,
+		Humidity:  64,
+		WindSpeed: 3.6,
+		WindDeg:   340,
+		Weather: []weather{
+			{
+				Main:        "Clear",
+				Description: "clear sky",
+				Icon:        "01d",
+			},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("expected %v, got %v", want, got)
 	}
 }
 

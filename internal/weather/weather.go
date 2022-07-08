@@ -16,19 +16,23 @@ import (
 )
 
 // weather struct holds just the data we need from the OpenWeatherMap API
+type weatherData struct {
+	Data []data `json:"data"`
+}
+
+type data struct {
+	Temp      float64   `json:"temp"`
+	FeelsLike float64   `json:"feels_like"`
+	Humidity  int64     `json:"humidity"`
+	WindSpeed float64   `json:"wind_speed"`
+	WindDeg   int       `json:"wind_deg"`
+	Weather   []weather `json:"weather"`
+}
+
 type weather struct {
-	Data []struct {
-		Temp      float64 `json:"temp"`
-		FeelsLike float64 `json:"feels_like"`
-		Humidity  int64   `json:"humidity"`
-		WindSpeed float64 `json:"wind_speed"`
-		WindDeg   int     `json:"wind_deg"`
-		Weather   []struct {
-			Main        string `json:"main"`
-			Icon        string `json:"icon"`
-			Description string `json:"description"`
-		} `json:"weather"`
-	} `json:"data"`
+	Main        string `json:"main"`
+	Icon        string `json:"icon"`
+	Description string `json:"description"`
 }
 
 // pollution struct holds just the data we need from the OpenWeatherMap API
@@ -46,19 +50,8 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
 	ets := end_date.Unix()
 
-	params := defaultParams()
-	params.Add("dt", fmt.Sprintf("%d", sts))
-	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
-	c.BaseURL.RawQuery = params.Encode()
-	req, err := c.NewRequest("GET", "", nil)
-	if err != nil {
-		log.Println(err)
-		return ""
-	}
-
 	// Get weather at start of activity
-	sw := weather{}
-	_, err = c.Do(context.Background(), req, &sw)
+	sw, err := getWeather(c, sts)
 	if err != nil {
 		log.Println(err)
 		return ""
@@ -66,19 +59,11 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 
 	// Get weather at end of activity
 	// Only get this if we cross the hour as it'll be the same as the start
-	ew := weather{}
+	ew := data{}
 	if start_date.Hour() == end_date.Hour() {
 		ew = sw
 	} else {
-		params.Set("dt", fmt.Sprintf("%d", ets))
-		c.BaseURL.RawQuery = params.Encode()
-		req, err = c.NewRequest("GET", "", nil)
-		if err != nil {
-			log.Println(err)
-			return ""
-		}
-
-		_, err = c.Do(context.Background(), req, &ew)
+		ew, err = getWeather(c, ets)
 		if err != nil {
 			log.Println(err)
 			return ""
@@ -86,7 +71,7 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 	}
 
 	// Return early if we don't have any data
-	if len(sw.Data) == 0 || len(ew.Data) == 0 {
+	if sw.Weather[0].Description == "" || ew.Weather[0].Description == "" {
 		return ""
 	}
 
@@ -105,25 +90,44 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 	// get aqi icon
 	aqi := getPollution(c, sts, ets)
 
-	swd := sw.Data[0]
-	ewd := ew.Data[0]
-
-	icon := strings.Trim(sw.Data[0].Weather[0].Icon, "dn")
+	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
 	// TODO: make me templatable
 	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
 	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
 
 	weather := fmt.Sprintf("%s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
-		weatherIcon[icon], cases.Title(language.BritishEnglish).String(swd.Weather[0].Description),
-		int(math.Round(swd.Temp)), int(math.Round(ewd.Temp)),
-		int(math.Round(swd.FeelsLike)),
-		swd.Humidity, ewd.Humidity,
-		int(math.Round(swd.WindSpeed)*3.6), int(math.Round(ewd.WindSpeed)*3.6),
-		windDirectionIcon(swd.WindDeg),
+		weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
+		int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
+		int(math.Round(sw.FeelsLike)),
+		sw.Humidity, ew.Humidity,
+		int(math.Round(sw.WindSpeed)*3.6), int(math.Round(ew.WindSpeed)*3.6),
+		windDirectionIcon(sw.WindDeg),
 		aqi)
 
 	return weather
+}
+
+// getWeather returns the weather conditions for the given time
+func getWeather(c *client.Client, dt int64) (data, error) {
+	params := defaultParams()
+	params.Add("dt", fmt.Sprintf("%d", dt))
+	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
+	c.BaseURL.RawQuery = params.Encode()
+	req, err := c.NewRequest("GET", "", nil)
+	if err != nil {
+		return data{}, err
+	}
+
+	// Get weather at start of activity
+	w := weatherData{}
+	_, err = c.Do(context.Background(), req, &w)
+	if err != nil {
+		log.Println(err)
+		return data{}, err
+	}
+
+	return w.Data[0], nil
 }
 
 // getPollution returns the AQI icon for the given period
