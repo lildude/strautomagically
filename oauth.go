@@ -7,19 +7,20 @@ import (
 	"os"
 
 	"github.com/lildude/strautomagically/internal/cache"
+	"github.com/lildude/strautomagically/internal/strava"
 	"golang.org/x/oauth2"
 )
 
-var oauthConfig = &oauth2.Config{
-	ClientID:     os.Getenv("STRAVA_CLIENT_ID"),
-	ClientSecret: os.Getenv("STRAVA_CLIENT_SECRET"),
-	Endpoint: oauth2.Endpoint{
-		AuthURL:  "https://www.strava.com/oauth/authorize",
-		TokenURL: "https://www.strava.com/oauth/token",
-	},
-	RedirectURL: os.Getenv("STRAVA_REDIRECT_URI"),
-	Scopes:      []string{"activity:write,activity:read_all"},
-}
+// var oauthConfig = &oauth2.Config{
+// 	ClientID:     os.Getenv("STRAVA_CLIENT_ID"),
+// 	ClientSecret: os.Getenv("STRAVA_CLIENT_SECRET"),
+// 	Endpoint: oauth2.Endpoint{
+// 		AuthURL:  "https://www.strava.com/oauth/authorize",
+// 		TokenURL: "https://www.strava.com/oauth/token",
+// 	},
+// 	RedirectURL: os.Getenv("STRAVA_REDIRECT_URI"),
+// 	Scopes:      []string{"activity:write,activity:read_all"},
+// }
 
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
@@ -46,7 +47,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if state == "" {
 		if authToken.AccessToken == "" {
-			u := oauthConfig.AuthCodeURL(stateToken)
+			u := strava.OauthConfig.AuthCodeURL(stateToken)
 			log.Println("redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
@@ -60,7 +61,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if code == "" {
 			http.Error(w, "code not found", http.StatusBadRequest)
 		}
-		token, err := oauthConfig.Exchange(context.Background(), code)
+		token, err := strava.OauthConfig.Exchange(context.Background(), code)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
