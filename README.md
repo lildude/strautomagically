@@ -3,6 +3,14 @@
 Webhook endpoint that runs on Heroku to do stuff automagically to my Strava activities as they appear.
 Inspired by [Klimat](https://klimat.app/) and [Strautomator](https://strautomator.com).
 
+## 🚧 WIP 🚧
+
+This is very much WIP and it more of a tinker tool to help me learn Go with a purpose.
+There's no guarantee, yet, that any of the info below is accurate of this even works.
+As such I've disabled issues and I'm not taking PRs.
+Feel free to fork and tinker for your own purposes.
+If I spot a fork and find something I like that you've done, I will pinch it 😜.
+
 ## Usage
 
 ### Prerequisites
