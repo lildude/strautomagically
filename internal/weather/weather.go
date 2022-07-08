@@ -45,7 +45,7 @@ type pollution struct {
 }
 
 // GetWeather returns the weather conditions in a pretty string
-func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
+func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) string {
 	sts := start_date.Unix()
 	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
 	ets := end_date.Unix()
