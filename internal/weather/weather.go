@@ -46,12 +46,7 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
 	ets := end_date.Unix()
 
-	params := url.Values{}
-	params.Add("lat", os.Getenv("OWM_LAT"))
-	params.Add("lon", os.Getenv("OWM_LON"))
-	params.Add("lang", "en")
-	params.Add("units", "metric")
-	params.Add("appid", os.Getenv("OWM_API_KEY"))
+	params := defaultParams()
 	params.Add("dt", fmt.Sprintf("%d", sts))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
@@ -71,7 +66,6 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 
 	// Get weather at end of activity
 	// Only get this if we cross the hour as it'll be the same as the start
-
 	ew := weather{}
 	if start_date.Hour() == end_date.Hour() {
 		ew = sw
@@ -91,22 +85,8 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 		}
 	}
 
-	// Get pollution data
-	params.Del("dt")
-	params.Set("start", fmt.Sprintf("%d", sts))
-	params.Set("end", fmt.Sprintf("%d", ets))
-	c.BaseURL.Path = "/data/2.5/air_pollution/history"
-	c.BaseURL.RawQuery = params.Encode()
-	req, err = c.NewRequest("GET", "", nil)
-	if err != nil {
-		log.Println(err)
-		return ""
-	}
-
-	p := pollution{}
-	_, err = c.Do(context.Background(), req, &p)
-	if err != nil {
-		log.Println(err)
+	// Return early if we don't have any data
+	if len(sw.Data) == 0 || len(ew.Data) == 0 {
 		return ""
 	}
 
@@ -122,27 +102,13 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 		"50": "🌫",  // Mist
 	}
 
-	aqiIcon := map[int]string{
-		1: "💚", // Good
-		2: "💛", // Fair
-		3: "🧡", // Moderate
-		4: "🤎", // Poor
-		5: "🖤", // Very Poor
-	}
-
-	// Return early if we don't have any data
-	if len(sw.Data) == 0 || len(ew.Data) == 0 {
-		return ""
-	}
+	// get aqi icon
+	aqi := getPollution(c, sts, ets)
 
 	swd := sw.Data[0]
 	ewd := ew.Data[0]
 
 	icon := strings.Trim(sw.Data[0].Weather[0].Icon, "dn")
-	aqi := "?"
-	if len(p.List) > 0 {
-		aqi = aqiIcon[p.List[0].Main.AQI]
-	}
 
 	// TODO: make me templatable
 	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
@@ -158,6 +124,53 @@ func GetWeather(c *client.Client, start_date time.Time, elapsed int32) string {
 		aqi)
 
 	return weather
+}
+
+// getPollution returns the AQI icon for the given period
+func getPollution(c *client.Client, start_date, end_date int64) string {
+	params := defaultParams()
+	params.Set("start", fmt.Sprintf("%d", start_date))
+	params.Set("end", fmt.Sprintf("%d", end_date))
+	c.BaseURL.Path = "/data/2.5/air_pollution/history"
+	c.BaseURL.RawQuery = params.Encode()
+	req, err := c.NewRequest("GET", "", nil)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+
+	p := pollution{}
+	_, err = c.Do(context.Background(), req, &p)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
+
+	aqiIcon := map[int]string{
+		1: `💚`, // Good
+		2: `💛`, // Fair
+		3: `🧡`, // Moderate
+		4: `🤎`, // Poor
+		5: `🖤`, // Very Poor
+	}
+
+	aqi := "?"
+	if len(p.List) > 0 {
+		aqi = aqiIcon[p.List[0].Main.AQI]
+	}
+
+	return aqi
+}
+
+// defaultParams returns a url.Values object with the default parameters used for all queries
+func defaultParams() url.Values {
+	params := url.Values{}
+	params.Add("lat", os.Getenv("OWM_LAT"))
+	params.Add("lon", os.Getenv("OWM_LON"))
+	params.Add("lang", "en")
+	params.Add("units", "metric")
+	params.Add("appid", os.Getenv("OWM_API_KEY"))
+	return params
 }
 
 // Return an icon indicating the wind direction.

@@ -149,6 +149,38 @@ func TestWindDirectionIcon(t *testing.T) {
 	}
 }
 
+func TestGetPollutionForAllLevels(t *testing.T) {
+	client, mux, _, teardown := setup()
+	defer teardown()
+
+	tests := []struct {
+		mock_aqi int
+		want     string
+	}{ // Not sure why I can't do direct emoji comparision here
+		{1, `\U1F49A`}, // 💚
+		{2, `\U1F49B`}, // 💛
+		{3, `\U1F9E1`}, // 🧡
+		{4, `\U1F90E`}, // 🤎
+		{5, `\U1F5A4`}, // 🖤
+	}
+	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("start")
+		aqi, _ := strconv.Atoi(q)
+		resp := fmt.Sprintf(`{"list":[{"dt":1605182400,"main":{"aqi":%d}}]}`, aqi)
+		fmt.Fprintln(w, resp)
+	})
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%d", tt.mock_aqi), func(t *testing.T) {
+			// Mock the aqi by fudging the start_date as we don't care about it in this test
+			got := getPollution(client, int64(tt.mock_aqi), 123999)
+			if got == tt.want {
+				t.Errorf("aqi %d expected %q, got %q", tt.mock_aqi, tt.want, got)
+			}
+		})
+	}
+}
+
 // Setup establishes a test Server that can be used to provide mock responses during testing.
 // It returns a pointer to a client, a mux, the server URL and a teardown function that
 // must be called when testing is complete.
