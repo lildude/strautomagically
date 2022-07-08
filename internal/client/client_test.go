@@ -18,8 +18,8 @@ var baseURL = &url.URL{Scheme: "http", Host: "example.com", Path: "/"}
 func TestNewClient(t *testing.T) {
 	c := NewClient(baseURL, nil)
 
-	if c.baseURL.String() != baseURL.String() {
-		t.Errorf("NewClient BaseURL is %v, expected %v", c.baseURL, baseURL)
+	if c.BaseURL.String() != baseURL.String() {
+		t.Errorf("NewClient BaseURL is %v, expected %v", c.BaseURL, baseURL)
 	}
 	if c.userAgent != userAgent {
 		t.Errorf("NewClient User-Agent is %v, expected %v", c.userAgent, userAgent)

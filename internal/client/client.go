@@ -16,7 +16,7 @@ var userAgent = "Stratomagically/0.1"
 
 // Client holds configuration items for the REST client and provides methods that interact with the REST API.
 type Client struct {
-	baseURL *url.URL
+	BaseURL *url.URL
 
 	userAgent string
 	client    *http.Client
@@ -31,7 +31,7 @@ func NewClient(baseURL *url.URL, cc *http.Client) *Client {
 		cc = http.DefaultClient
 	}
 
-	c := &Client{baseURL: baseURL, userAgent: userAgent, client: cc}
+	c := &Client{BaseURL: baseURL, userAgent: userAgent, client: cc}
 	return c
 }
 
@@ -39,7 +39,7 @@ func NewClient(baseURL *url.URL, cc *http.Client) *Client {
 // slash. A relative URL should be provided without the leading slash. If a non-nil body is provided
 // it will be JSON encoded and included in the request.
 func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
-	u, err := c.baseURL.Parse(urlStr)
+	u, err := c.BaseURL.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
