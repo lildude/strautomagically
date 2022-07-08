@@ -130,8 +130,6 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/lildude/openweathermap v0.0.0-20220624162220-8322fbcee87f h1:oST01VunIdm2D991A/5qwQPpg3M0EK3jE7j88wWmixY=
-github.com/lildude/openweathermap v0.0.0-20220624162220-8322fbcee87f/go.mod h1:vZ8eokxpaQaYHKvyUV6Qo0fy/+9gIWBC3ehoqY0N/vk=
 github.com/lildude/strava-swagger v0.0.0-20220611105606-98b791d3a5cb h1:AxzoSO1mg9dorHCk2KhDrkpRQ8ah4rfvJuh04Ad6ONE=
 github.com/lildude/strava-swagger v0.0.0-20220611105606-98b791d3a5cb/go.mod h1:Jkp5xCrIhDnD8CqfTnoDNYnhvBwXyO8BYjotcQzZMbw=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
