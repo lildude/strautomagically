@@ -47,14 +47,6 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("unable to get activity id: %s", err)
 	}
 
-	if aid == "" {
-		aid = webhook.ObjectID
-		err = cache.Set("strava_activity", aid)
-		if err != nil {
-			log.Printf("unable to set activity id: %s", err)
-		}
-	}
-
 	if aid != webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
 		log.Println("ignoring activity", webhook.ObjectID, "as it's not the latest")
@@ -179,6 +171,15 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("unable to update activity: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
+	}
+
+	// Cache activity ID if we've succeeded
+	if aid == "" {
+		aid = webhook.ObjectID
+		err = cache.Set("strava_activity", aid)
+		if err != nil {
+			log.Printf("unable to set activity id: %s", err)
+		}
 	}
 
 	log.Println(msg)
