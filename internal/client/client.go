@@ -35,8 +35,7 @@ func NewClient(baseURL *url.URL, cc *http.Client) *Client {
 	return c
 }
 
-// NewRequest creates an HTTP Request. The client baseURL is checked to confirm that it has a trailing
-// slash. A relative URL should be provided without the leading slash. If a non-nil body is provided
+// NewRequest creates an HTTP Request. If a non-nil body is provided
 // it will be JSON encoded and included in the request.
 func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
 	u, err := c.BaseURL.Parse(urlStr)
