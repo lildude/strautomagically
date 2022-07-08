@@ -6,9 +6,11 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/antihax/optional"
+	gc "github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/weather"
 	"github.com/lildude/strava-swagger"
 )
@@ -120,7 +122,10 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(*activity.StartLatlng) == 0 {
-		weather := weather.GetWeather(activity.StartDateLocal, activity.ElapsedTime)
+		baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
+
+		wclient := gc.NewClient(baseURL, nil)
+		weather := weather.GetWeatherLine(wclient, activity.StartDateLocal, activity.ElapsedTime)
 		if weather != "" && !strings.Contains(activity.Description, "AQI") {
 			if activity.Description != "" {
 				update.Description = activity.Description + "\n\n"
