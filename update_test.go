@@ -3,14 +3,31 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
+	"github.com/lildude/strautomagically/internal/client"
+	ic "github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 )
 
 func TestConstructUpdate(t *testing.T) {
+	client, mux, _, _ := setup()
+	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
+		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
+		fmt.Fprintln(w, resp)
+	})
+
+	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
+		resp := `{"list":[{"dt":1605182400,"main":{"aqi":5}}]}`
+		fmt.Fprintln(w, resp)
+	})
+
 	tests := []struct {
 		name     string
 		want     *strava.UpdatableActivity
@@ -125,16 +142,16 @@ func TestConstructUpdate(t *testing.T) {
 			"set title to Warm-up Row\n",
 			[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
-		// {
-		// 	"add weather to pop'd description",
-		// 	&strava.UpdatableActivity{
-		// 		Name:         "Warm-up Row",
-		// 		HideFromHome: true,
-		// 		Description:  "Test activity description\n\n☀️ Clear Sky | 🌡 0-0°C | 👌 -3°C | 💦 96-97% | 💨 10-10km/h ↗️ | AQI 🖤\n",
-		// 	},
-		// 	"set title to Warm-up Row & added weather\n",
-		// 	[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`),
-		// },
+		{
+			"add weather to pop'd description",
+			&strava.UpdatableActivity{
+				Name:         "Warm-up Row",
+				HideFromHome: true,
+				Description:  "Test activity description\n\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 🖤\n",
+			},
+			"set title to Warm-up Row & added weather\n",
+			[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`),
+		},
 	}
 
 	for _, tc := range tests {
@@ -150,7 +167,7 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got := constructUpdate(&a)
+			got := constructUpdate(client, &a)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %v, got %v", tc.want, got)
 			}
@@ -164,4 +181,17 @@ func TestConstructUpdate(t *testing.T) {
 func TestUpdateHandler(t *testing.T) {
 	// skip until we've refactored
 	t.SkipNow()
+}
+
+// Setup establishes a test Server that can be used to provide mock responses during testing.
+// It returns a pointer to a client, a mux, the server URL and a teardown function that
+// must be called when testing is complete.
+func setup() (client *client.Client, mux *http.ServeMux, serverURL string, teardown func()) {
+	mux = http.NewServeMux()
+	server := httptest.NewServer(mux)
+
+	url, _ := url.Parse(server.URL + "/")
+	c := ic.NewClient(url, nil)
+
+	return c, mux, server.URL, server.Close
 }
