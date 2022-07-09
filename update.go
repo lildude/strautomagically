@@ -93,7 +93,9 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Activity:", activity.Name)
 
-	update := constructUpdate(activity)
+	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
+	wclient := client.NewClient(baseURL, nil)
+	update := constructUpdate(wclient, activity)
 
 	if update != nil {
 		_, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
@@ -116,7 +118,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(activity *strava.Activity) *strava.UpdatableActivity {
+func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity {
 	var update strava.UpdatableActivity
 	msg := "nothing to do"
 
@@ -174,12 +176,10 @@ func constructUpdate(activity *strava.Activity) *strava.UpdatableActivity {
 		update.Name = title
 		msg = fmt.Sprintf("set title to %s", title)
 	}
+
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(activity.StartLatlng) == 0 {
 		if !strings.Contains(activity.Description, "AQI") {
-			baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
-
-			wclient := client.NewClient(baseURL, nil)
 			weather, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
 			if err != nil {
 				log.Printf("unable to get weather: %s", err)
