@@ -19,7 +19,7 @@ func TestGetActivity(t *testing.T) {
 	client, mux, _, teardown := setup()
 	defer teardown()
 
-	resp := `{"id" : 12345678987654321, "name" : "Test Activity", "distance": 28099, "start_date" : "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time" : 4410, "external_id: "garmin_push_12345678987654321", "type": "Ride", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`
+	resp := `{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "garmin_push_12345678987654321", "type": "Ride", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, resp)
