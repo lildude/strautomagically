@@ -20,10 +20,15 @@ import (
 
 func updateHandler(w http.ResponseWriter, r *http.Request) {
 	var webhook strava.WebhookPayload
+	if r.Body == nil {
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+
 	body, _ := ioutil.ReadAll(r.Body)
 	if err := json.Unmarshal([]byte(body), &webhook); err != nil {
 		log.Println("unable to unmarshal webhook payload:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -47,9 +52,9 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("unable to get activity id: %s", err)
 	}
 
-	if aid != webhook.ObjectID {
+	if aid == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
-		log.Println("ignoring activity as it's not the latest")
+		log.Println("ignoring repeat event")
 		return
 	}
 
