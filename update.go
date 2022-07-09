@@ -49,7 +49,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if aid != webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
-		log.Println("ignoring activity", webhook.ObjectID, "as it's not the latest")
+		log.Println("ignoring activity as it's not the latest")
 		return
 	}
 
