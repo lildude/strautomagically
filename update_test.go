@@ -2,126 +2,166 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/json"
 	"log"
-	"net/http"
-	"net/http/httptest"
-	"os"
+	"reflect"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
-	mockhttp "github.com/karupanerura/go-mock-http-response"
+	"github.com/lildude/strautomagically/internal/strava"
 )
 
-type MockTransport struct {
-	Host      string
-	Transport *http.Transport
-}
-
-func (m MockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.URL.Scheme = "http"
-	req.URL.Host = m.Host
-
-	return m.Transport.RoundTrip(req)
-}
-
-func mockResponse(statusCode int, headers map[string]string, body []byte) {
-	http.DefaultClient = mockhttp.NewResponseMock(statusCode, headers, body).MakeClient()
-}
-
-func TestUpdateHandler(t *testing.T) {
-	// skip until we've refactored
-	t.SkipNow()
-	testCases := []struct {
-		name             string
-		payload          []byte
-		expLogMsg        string
-		mockActivityResp []byte
+func TestConstructUpdate(t *testing.T) {
+	tests := []struct {
+		name     string
+		want     *strava.UpdatableActivity
+		wantLog  string
+		activity []byte
 	}{
 		{
-			name:      "update event",
-			payload:   []byte(`{"aspect_type":"update","event_time":1516126040,"object_id":1360128428,"object_type":"activity","owner_id":134815,"subscription_id": 120475,"updates":{"title": "Messy"}}`),
-			expLogMsg: "ignoring non-create webhook\n",
+			"no changes",
+			&strava.UpdatableActivity{},
+			"nothing to do\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "garmin_push_12345678987654321", "type": "Run", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
-			name:      "delete event",
-			payload:   []byte(`{"aspect_type":"update","event_time":1516126040,"object_id":1360128428,"object_type":"activity","owner_id":134815,"subscription_id":120475}`),
-			expLogMsg: "ignoring non-create webhook\n",
+			"set gear and mute walks",
+			&strava.UpdatableActivity{
+				HideFromHome: true,
+				GearID:       "g10043849",
+			},
+			"muted walk\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "garmin_push_12345678987654321", "type": "Walk", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
-			name:             "create event with nothing to do",
-			payload:          []byte(`{"aspect_type":"create","event_time":1516126040,"object_id":1360128428,"object_type":"activity","owner_id":134815,"subscription_id":120475}`),
-			expLogMsg:        "nothing to do\n",
-			mockActivityResp: []byte(`{"id":1360128428,"type":"Run","elapsed_time":99009, "external_id":"garmin_push_12345","trainer":"false"}`),
+			"set humane burpees title and mute",
+			&strava.UpdatableActivity{
+				Name:         "Humane Burpees",
+				HideFromHome: true,
+			},
+			"set humane burpees title\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 200, "external_id": "garmin_push_12345678987654321", "type": "WeightTraining", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
+		{
+			"prefix and set get for TrainerRoad activities",
+			&strava.UpdatableActivity{
+				Name:    "TR: Test Activity",
+				GearID:  "b9880609",
+				Trainer: true,
+			},
+			"prefixed name of ride with TR and set gear to trainer\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "trainerroad_12345678987654321", "type": "Ride", "trainer": true, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set gear to trainer for Zwift activities",
+			&strava.UpdatableActivity{
+				GearID:  "b9880609",
+				Trainer: true,
+			},
+			"set gear to trainer\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "VirtualRide", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set get to bike",
+			&strava.UpdatableActivity{
+				GearID: "b10013574",
+			},
+			"set gear to bike\n",
+			[]byte(`{"id": 12345678987654321, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Ride", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: speed pyramid",
+			&strava.UpdatableActivity{
+				Name: "Speed Pyramid Row w/ 1.5' RI per 250m work",
+			},
+			"set title to Speed Pyramid Row w/ 1.5' RI per 250m work\n",
+			[]byte(`{"id": 12345678987654321, "name": "v250m/1:30r...7 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 8x500",
+			&strava.UpdatableActivity{
+				Name: "8x 500m w/ 3.5' RI Row",
+			},
+			"set title to 8x 500m w/ 3.5' RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "8x500m/3:30r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 5x1500",
+			&strava.UpdatableActivity{
+				Name: "5x 1500m w/ 5' RI Row",
+			},
+			"set title to 5x 1500m w/ 5' RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "5x1500m/5:00r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 4x200",
+			&strava.UpdatableActivity{
+				Name: "4x 2000m w/5' RI Row",
+			},
+			"set title to 4x 2000m w/5' RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "4x2000m/5:00r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 4x1000",
+			&strava.UpdatableActivity{
+				Name: "4x 1000m /5' RI Row",
+			},
+			"set title to 4x 1000m /5' RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "4x1000m/5:00r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: waterfall",
+			&strava.UpdatableActivity{
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' RI Row",
+			},
+			"set title to Waterfall of 3k, 2.5k, 2k w/ 5' RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "v3000m/5:00r...3 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: warmup",
+			&strava.UpdatableActivity{
+				Name:         "Warm-up Row",
+				HideFromHome: true,
+			},
+			"set title to Warm-up Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		// {
+		// 	"add weather to pop'd description",
+		// 	&strava.UpdatableActivity{
+		// 		Name:         "Warm-up Row",
+		// 		HideFromHome: true,
+		// 		Description:  "Test activity description\n\n☀️ Clear Sky | 🌡 0-0°C | 👌 -3°C | 💦 96-97% | 💨 10-10km/h ↗️ | AQI 🖤\n",
+		// 	},
+		// 	"set title to Warm-up Row & added weather\n",
+		// 	[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`),
+		// },
 	}
 
-	r := miniredis.RunT(t)
-	defer r.Close()
-	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
-
-	for _, tc := range testCases {
-		tc := tc
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Use a faux logger so we can parse the content to find our debug messages to confirm our tests
 			var fauxLog bytes.Buffer
 			log.SetFlags(0)
 			log.SetOutput(&fauxLog)
-			req := httptest.NewRequest(http.MethodPost, "/update", bytes.NewBuffer(tc.payload))
-			rr := httptest.NewRecorder()
 
-			// Mock the Strava Server for our OAuth requests and the activity endpoint
-			// mux := http.NewServeMux()
-			// mux.HandleFunc("/oauth/token", func(w http.ResponseWriter, r *http.Request) {
-			// 	fmt.Println("got oauth request")
-			// 	w.WriteHeader(http.StatusOK)
-			// 	w.Write([]byte(`{"token_type": "Bearer","expires_at": 1568775134,"expires_in": 21600,"refresh_token": "123456","access_token": "987654"}`))
-			// })
-			// mux.HandleFunc("/api/v3/activities/1360128428", func(w http.ResponseWriter, r *http.Request) {
-			// 	fmt.Println("got activity request")
-			// 	w.WriteHeader(http.StatusOK)
-			// 	w.Write(tc.mockActivityResp)
-			// })
-
-			// s := httptest.NewServer(mux)
-			// defer s.Close()
-
-			// serverURL, _ := url.Parse(s.URL)
-			// Transport = MockTransport{
-			// 	Host:      serverURL.Host,
-			// 	Transport: &http.Transport{},
-			// }
-			// http.DefaultTransport = Transport
-
-			// Lets try with gock
-			// defer gock.Off()
-
-			// gock.Observe(gock.DumpRequest)
-			// gock.New("https://www.strava.com").
-			// 	Post("/api/v3/oauth/token").
-			// 	Reply(200).
-			// 	JSON(map[string]string{"token_type": "Bearer", "expires_at": "1568775134", "expires_in": "21600", "refresh_token": "123456", "access_token": "987654"})
-
-			// gock.New("https://www.strava.com").
-			// 	Get("/api/v3/activities/1360128428").
-			// 	Reply(200).
-			// 	JSON(map[string]string{"id": "1360128428", "type": "Run", "elapsed_time": "99009", "external_id": "garmin_push_12345", "trainer": "false"})
-
-			// updateHandler(rr, req)
-
-			// What about using mock-http-response
-			mockResponse(http.StatusOK, map[string]string{"Content-Type": "application/json"}, []byte(`{"token_type": "Bearer","expires_at": 1568775134,"expires_in": 21600,"refresh_token": "123456","access_token": "987654"}`))
-			mockResponse(http.StatusOK, map[string]string{"Content-Type": "application/json"}, tc.mockActivityResp)
-
-			handler := http.HandlerFunc(updateHandler)
-			handler.ServeHTTP(rr, req)
-
-			if rr.Code != http.StatusOK {
-				t.Errorf("expected status code %d, got %d", http.StatusOK, rr.Code)
+			var a strava.Activity
+			err := json.Unmarshal(tc.activity, &a)
+			if err != nil {
+				t.Errorf("unexpected error parsing test input: %v", err)
 			}
-			if tc.expLogMsg != fauxLog.String() {
-				t.Errorf("expected log msg '%s', got '%s'", tc.expLogMsg, fauxLog.String())
+
+			got := constructUpdate(&a)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("expected %v, got %v", tc.want, got)
+			}
+			if fauxLog.String() != tc.wantLog {
+				t.Errorf("expected %q, got %q", tc.wantLog, fauxLog.String())
 			}
 		})
 	}
+}
+
+func TestUpdateHandler(t *testing.T) {
+	// skip until we've refactored
+	t.SkipNow()
 }
