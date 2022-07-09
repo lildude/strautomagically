@@ -93,6 +93,30 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Activity:", activity.Name)
 
+	update := constructUpdate(activity)
+
+	if update != nil {
+		_, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
+		if err != nil {
+			log.Printf("unable to update activity: %s", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		// Cache activity ID if we've succeeded
+		err = cache.Set("strava_activity", webhook.ObjectID)
+		if err != nil {
+			log.Printf("unable to set activity id: %s", err)
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if _, err = w.Write([]byte(`success`)); err != nil {
+		log.Println(err)
+	}
+}
+
+func constructUpdate(activity *strava.Activity) *strava.UpdatableActivity {
 	var update strava.UpdatableActivity
 	msg := "nothing to do"
 
@@ -110,14 +134,16 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		msg = "set humane burpees title"
 	}
 	// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
-	if activity.Type == "Ride" && activity.ExternalID != "" && activity.ExternalID[0:7] == "trainerroad" {
+	if activity.Type == "Ride" && activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
 		update.Name = "TR: " + activity.Name
 		update.GearID = "b9880609"
+		update.Trainer = true
 		msg = "prefixed name of ride with TR and set gear to trainer"
 	}
 	// Set gear to b9880609 if activity is a ride and external_id starts with zwift
 	if activity.Type == "VirtualRide" && activity.ExternalID != "" && activity.ExternalID[0:5] == "zwift" {
 		update.GearID = "b9880609"
+		update.Trainer = true
 		msg = "set gear to trainer"
 	}
 	// Set gear to b10013574 if activity is a ride and not on trainer
@@ -150,42 +176,25 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(activity.StartLatlng) == 0 {
-		baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
+		if !strings.Contains(activity.Description, "AQI") {
+			baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 
-		wclient := client.NewClient(baseURL, nil)
-		weather, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
-		if err != nil {
-			log.Printf("unable to get weather: %s", err)
-		}
-		if weather != "" && !strings.Contains(activity.Description, "AQI") {
-			if activity.Description != "" {
-				update.Description = activity.Description + "\n\n"
+			wclient := client.NewClient(baseURL, nil)
+			weather, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+			if err != nil {
+				log.Printf("unable to get weather: %s", err)
 			}
-			update.Description += weather
-			msg += " & added weather"
-		}
-	}
-
-	_, err = strava.UpdateActivity(sc, webhook.ObjectID, &update)
-	if err != nil {
-		log.Printf("unable to update activity: %s", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
-	// Cache activity ID if we've succeeded
-	if aid == "" {
-		aid = webhook.ObjectID
-		err = cache.Set("strava_activity", aid)
-		if err != nil {
-			log.Printf("unable to set activity id: %s", err)
+			if weather != "" {
+				if activity.Description != "" {
+					update.Description = activity.Description + "\n\n"
+				}
+				update.Description += weather
+				msg += " & added weather"
+			}
 		}
 	}
 
 	log.Println(msg)
 
-	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write([]byte(`success`)); err != nil {
-		log.Println(err)
-	}
+	return &update
 }
