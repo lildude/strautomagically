@@ -8,13 +8,85 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/lildude/strautomagically/internal/client"
 	ic "github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 )
+
+func TestUpdateHandler(t *testing.T) {
+	// client, mux, _, _ := setup()
+	tests := []struct {
+		name  string
+		body  []byte
+		redis []string // Used to seed Redis with the expected values for the tests
+		want  int
+	}{
+		{
+			"no body",
+			[]byte{},
+			[]string{},
+			400,
+		},
+		{
+			"invalid JSON in body",
+			[]byte(`{"foo: "bar"}`),
+			[]string{},
+			400,
+		},
+		{
+			"non-create event",
+			[]byte(`{"aspect_type": "update"}`),
+			[]string{},
+			200,
+		},
+		{
+			"redis unavailable",
+			[]byte(`{"aspect_type": "create", "object_id": "123"}`),
+			[]string{},
+			500,
+		},
+		{
+			"repeat event",
+			[]byte(`{"aspect_type": "create", "object_id": "123"}`),
+			[]string{"98765", "123"},
+			200,
+		},
+		{
+			"create event",
+			[]byte(`{"aspect_type": "create", "object_id": "456"}`),
+			[]string{"98765", "456"},
+			200,
+		},
+	}
+
+	r := miniredis.RunT(t)
+	defer r.Close()
+	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+
+	req, err := http.NewRequest("POST", "/webhook", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(updateHandler) // Fudging it as webhookHandler handles /webhook but calls updateHandler if it receives a POST request
+	handler.ServeHTTP(rr, req)
+
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	expected := `{"alive": true}`
+	if rr.Body.String() != expected {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expected)
+	}
+}
 
 func TestConstructUpdate(t *testing.T) {
 	client, mux, _, _ := setup()
@@ -176,11 +248,6 @@ func TestConstructUpdate(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestUpdateHandler(t *testing.T) {
-	// skip until we've refactored
-	t.SkipNow()
 }
 
 // Setup establishes a test Server that can be used to provide mock responses during testing.
