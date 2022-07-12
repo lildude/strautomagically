@@ -2,7 +2,7 @@ include .env
 
 .PHONY: app_url
 app_url:
-	$(eval export URL=https://$$(shell heroku domains | tail -1	))
+	$(eval export URL=https://$$(shell heroku domains --app=${HEROKU_APP} | tail -1))
 
 .PHONY: heroku
 heroku: app_url
@@ -21,3 +21,11 @@ heroku: app_url
 .PHONY: heroku-local
 heroku-local:
 	go build -o bin/strautomagically -v && heroku local --port 8080
+
+.PHONY: reset-auth-token
+reset-auth-token:
+	echo DEL strava_auth_token | heroku redis:cli -a ${HEROKU_APP} -c ${HEROKU_APP}
+
+.PHONY: reset-last-activity
+reset-last-activity:
+	echo DEL strava_activity | heroku redis:cli -a ${HEROKU_APP} -c ${HEROKU_APP}
