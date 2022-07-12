@@ -160,10 +160,18 @@ func TestConstructUpdate(t *testing.T) {
 		{
 			"set rowing title: speed pyramid",
 			&strava.UpdatableActivity{
-				Name: "Speed Pyramid Row w/ 1.5' RI per 250m work",
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
 			},
-			"set title to Speed Pyramid Row w/ 1.5' RI per 250m work\n",
+			"set title to Speed Pyramid Row w/ 1.5' Active RI per 250m work\n",
 			[]byte(`{"id": 12345678987654321, "name": "v250m/1:30r...7 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: speed pyramid - the other one",
+			&strava.UpdatableActivity{
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
+			},
+			"set title to Speed Pyramid Row w/ 1.5' Active RI per 250m work\n",
+			[]byte(`{"id": 12345678987654321, "name": "v5:00/1:00r...15 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
 			"set rowing title: 8x500",

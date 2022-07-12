@@ -162,8 +162,8 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 	var title string
 	if activity.Type == "Rowing" {
 		switch activity.Name {
-		case "v250m/1:30r...7 row":
-			title = "Speed Pyramid Row w/ 1.5' RI per 250m work"
+		case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
+			title = "Speed Pyramid Row w/ 1.5' Active RI per 250m work"
 		case "8x500m/3:30r row":
 			title = "8x 500m w/ 3.5' RI Row"
 		case "5x1500m/5:00r row":
