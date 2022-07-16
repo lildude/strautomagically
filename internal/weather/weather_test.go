@@ -104,7 +104,10 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got := GetWeatherLine(client, start_in, elapsed)
+	got, err := GetWeatherLine(client, start_in, elapsed)
+	if err != nil {
+		t.Errorf("expected nil error, got %q", err)
+	}
 	want := "☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
@@ -149,7 +152,10 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got := GetWeatherLine(client, start_in, elapsed)
+	got, err := GetWeatherLine(client, start_in, elapsed)
+	if err != nil {
+		t.Errorf("expected nil error, got %q", err)
+	}
 	want := "☀️ Clear Sky | 🌡 19-23°C | 👌 16°C | 💦 64-94% | 💨 14-3km/h ↓ | AQI 💚\n"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
@@ -162,13 +168,13 @@ func TestWindDirectionIcon(t *testing.T) {
 		want    string
 	}{
 		{0, "↓"},
-		{45, "↙️"},
+		{45, "↙"},
 		{90, "←"},
-		{135, "↖️"},
+		{135, "↖"},
 		{180, "↑"},
-		{225, "↗️"},
+		{225, "↗"},
 		{270, "→"},
-		{315, "↘️"},
+		{315, "↘"},
 		{360, "↓"},
 		{-1, ""},
 		{361, ""},

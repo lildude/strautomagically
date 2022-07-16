@@ -1,3 +1,4 @@
+// The weather package implements methods to gather weather and AQI from OpenWeatherMap and present it in a pretty string.
 package weather
 
 import (
@@ -45,7 +46,7 @@ type pollution struct {
 }
 
 // GetWeather returns the weather conditions in a pretty string
-func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) string {
+func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) (string, error) {
 	sts := start_date.Unix()
 	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
 	ets := end_date.Unix()
@@ -53,8 +54,7 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) strin
 	// Get weather at start of activity
 	sw, err := getWeather(c, sts)
 	if err != nil {
-		log.Println(err)
-		return ""
+		return "", err
 	}
 
 	// Get weather at end of activity
@@ -66,26 +66,25 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) strin
 		ew, err = getWeather(c, ets)
 		if err != nil {
 			// If we can't get the end weather, just use the start weather
-			log.Println(err)
 			ew = sw
 		}
 	}
 
 	// Return early if we don't have any data
 	if sw.Weather[0].Description == "" || ew.Weather[0].Description == "" {
-		return ""
+		return "", err
 	}
 
 	weatherIcon := map[string]string{
-		"01": "☀️", // Clear
-		"02": "🌤",  // Partly cloudy
-		"03": "⛅",  // Scattered clouds
-		"04": "🌥",  // Broken clouds
-		"09": "🌧",  // Shower/rain
-		"10": "🌦",  // Rain
-		"11": "⛈",  // Thunderstorm
-		"13": "🌨",  // Snow
-		"50": "🌫",  // Mist
+		"01": "\u2600\uFE0F", // Clear
+		"02": "🌤",            // Partly cloudy
+		"03": "⛅",            // Scattered clouds
+		"04": "🌥",            // Broken clouds
+		"09": "🌧",            // Shower/rain
+		"10": "🌦",            // Rain
+		"11": "⛈",            // Thunderstorm
+		"13": "🌨",            // Snow
+		"50": "🌫",            // Mist
 	}
 
 	// get aqi icon
@@ -106,7 +105,7 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) strin
 		windDirectionIcon(sw.WindDeg),
 		aqi)
 
-	return weather
+	return weather, nil
 }
 
 // getWeather returns the weather conditions for the given time
@@ -187,19 +186,19 @@ func windDirectionIcon(deg int) string {
 	case (deg >= 338 && deg <= 360) || (deg >= 0 && deg <= 22):
 		return "↓"
 	case (deg >= 23 && deg <= 67):
-		return "↙️"
+		return "↙"
 	case (deg >= 68 && deg <= 112):
 		return "←"
 	case (deg >= 113 && deg <= 157):
-		return "↖️"
+		return "↖"
 	case (deg >= 158 && deg <= 202):
 		return "↑"
 	case (deg >= 203 && deg <= 247):
-		return "↗️"
+		return "↗"
 	case (deg >= 248 && deg <= 292):
 		return "→"
 	case (deg >= 293 && deg <= 337):
-		return "↘️"
+		return "↘"
 	}
 	return ""
 }
