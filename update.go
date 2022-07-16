@@ -51,8 +51,11 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("unable to get activity id: %s", err)
 	}
+	// Convert aid to int
+	s, _ := aid.(string)
+	aid_i, _ := strconv.ParseInt(s, 10, 64)
 
-	if aid == webhook.ObjectID {
+	if aid_i == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
 		log.Println("ignoring repeat event")
 		return
