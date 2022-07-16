@@ -186,7 +186,7 @@ func windDirectionIcon(deg int) string {
 	case (deg >= 338 && deg <= 360) || (deg >= 0 && deg <= 22):
 		return "↓"
 	case (deg >= 23 && deg <= 67):
-		return "↙️"
+		return "↙"
 	case (deg >= 68 && deg <= 112):
 		return "←"
 	case (deg >= 113 && deg <= 157):
@@ -194,11 +194,11 @@ func windDirectionIcon(deg int) string {
 	case (deg >= 158 && deg <= 202):
 		return "↑"
 	case (deg >= 203 && deg <= 247):
-		return "↗️"
+		return "↗"
 	case (deg >= 248 && deg <= 292):
 		return "→"
 	case (deg >= 293 && deg <= 337):
-		return "↘️"
+		return "↘"
 	}
 	return ""
 }
