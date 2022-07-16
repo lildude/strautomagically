@@ -4,87 +4,117 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/jarcoal/httpmock"
 	"github.com/lildude/strautomagically/internal/client"
 	ic "github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 )
 
 func TestUpdateHandler(t *testing.T) {
-	// client, mux, _, _ := setup()
+	// Discard logs to avoid polluting test output
+	log.SetOutput(ioutil.Discard)
+
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	oat := `{"access_token":"123456789","token_type":"Bearer","refresh_token":"987654321","expiry":"2022-07-12T18:30:36.917400827Z"}`
+
+	httpmock.RegisterResponder("POST", "https://www.strava.com/oauth/token",
+		httpmock.NewStringResponder(200, oat))
+
+	httpmock.RegisterResponder("GET", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, `{"id": 123, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "garmin_push_12345678987654321", "type": "Ride", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`))
+
+	httpmock.RegisterResponder("PUT", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, `{"id": 123, "name": "Test Activity", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "garmin_push_12345678987654321", "type": "Ride", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/3.0/onecall/timemachine",
+		httpmock.NewStringResponder(200, `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/2.5/air_pollution/history",
+		httpmock.NewStringResponder(200, `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`))
+
 	tests := []struct {
 		name  string
-		body  []byte
+		body  string
 		redis []string // Used to seed Redis with the expected values for the tests
 		want  int
 	}{
 		{
 			"no body",
-			[]byte{},
-			[]string{},
+			``,
+			[]string{"", ""},
 			400,
 		},
 		{
 			"invalid JSON in body",
-			[]byte(`{"foo: "bar"}`),
-			[]string{},
+			`{"foo: "bar"}`,
+			[]string{"", ""},
 			400,
 		},
 		{
 			"non-create event",
-			[]byte(`{"aspect_type": "update"}`),
-			[]string{},
+			`{"aspect_type": "update"}`,
+			[]string{"", ""},
 			200,
 		},
 		{
-			"redis unavailable",
-			[]byte(`{"aspect_type": "create", "object_id": "123"}`),
-			[]string{},
+			"unresponsive redis",
+			`{"aspect_type": "create", "object_id": 123}`,
+			[]string{"", ""},
 			500,
 		},
 		{
 			"repeat event",
-			[]byte(`{"aspect_type": "create", "object_id": "123"}`),
-			[]string{"98765", "123"},
+			`{"aspect_type": "create", "object_id": 123}`,
+			[]string{oat, "123"},
 			200,
 		},
 		{
 			"create event",
-			[]byte(`{"aspect_type": "create", "object_id": "456"}`),
-			[]string{"98765", "456"},
+			`{"aspect_type": "create", "object_id": 456}`,
+			[]string{oat, ""},
 			200,
 		},
 	}
 
 	r := miniredis.RunT(t)
 	defer r.Close()
-	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
 
-	req, err := http.NewRequest("POST", "/webhook", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(updateHandler) // Fudging it as webhookHandler handles /webhook but calls updateHandler if it receives a POST request
-	handler.ServeHTTP(rr, req)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Pre-populate Redis with the expected values, if set, and set REDIS_URL to use the miniredis instance
+			if tc.redis[0] != "" {
+				os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+				r.Set("strava_auth_token", tc.redis[0]) //nolint:errcheck
+				r.Set("strava_activity", tc.redis[1])   //nolint:errcheck
+			} else {
+				os.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
+			}
 
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusOK)
-	}
+			req, err := http.NewRequest("POST", "/webhook", strings.NewReader(tc.body))
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler := http.HandlerFunc(updateHandler) // Fudging it as webhookHandler handles /webhook but calls updateHandler if it receives a POST request
+			handler.ServeHTTP(rr, req)
 
-	expected := `{"alive": true}`
-	if rr.Body.String() != expected {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			rr.Body.String(), expected)
+			if status := rr.Code; status != tc.want {
+				t.Errorf("%s: handler returned wrong status code: got %d want %d", tc.name, status, tc.want)
+			}
+		})
 	}
 }
 
@@ -190,12 +220,20 @@ func TestConstructUpdate(t *testing.T) {
 			[]byte(`{"id": 12345678987654321, "name": "5x1500m/5:00r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
-			"set rowing title: 4x200",
+			"set rowing title: 4x2000",
 			&strava.UpdatableActivity{
-				Name: "4x 2000m w/5' RI Row",
+				Name: "4x 2000m w/5' Active RI Row",
 			},
-			"set title to 4x 2000m w/5' RI Row\n",
+			"set title to 4x 2000m w/5' Active RI Row\n",
 			[]byte(`{"id": 12345678987654321, "name": "4x2000m/5:00r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 4x2000 - the other one",
+			&strava.UpdatableActivity{
+				Name: "4x 2000m w/5' Active RI Row",
+			},
+			"set title to 4x 2000m w/5' Active RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "v5:00/1:00r...9 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
 			"set rowing title: 4x1000",
