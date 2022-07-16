@@ -11,17 +11,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// var oauthConfig = &oauth2.Config{
-// 	ClientID:     os.Getenv("STRAVA_CLIENT_ID"),
-// 	ClientSecret: os.Getenv("STRAVA_CLIENT_SECRET"),
-// 	Endpoint: oauth2.Endpoint{
-// 		AuthURL:  "https://www.strava.com/oauth/authorize",
-// 		TokenURL: "https://www.strava.com/oauth/token",
-// 	},
-// 	RedirectURL: os.Getenv("STRAVA_REDIRECT_URI"),
-// 	Scopes:      []string{"activity:write,activity:read_all"},
-// }
-
 func authHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
