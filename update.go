@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/lildude/strautomagically/internal/cache"
@@ -171,8 +172,8 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 			title = "8x 500m w/ 3.5' RI Row"
 		case "5x1500m/5:00r row":
 			title = "5x 1500m w/ 5' RI Row"
-		case "4x2000m/5:00r row":
-			title = "4x 2000m w/5' RI Row"
+		case "4x2000m/5:00r row", "v5:00/1:00r...9 row":
+			title = "4x 2000m w/5' Active RI Row"
 		case "4x1000m/5:00r row":
 			title = "4x 1000m /5' RI Row"
 		case "v3000m/5:00r...3 row":
