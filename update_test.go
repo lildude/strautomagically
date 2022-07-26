@@ -103,7 +103,7 @@ func TestUpdateHandler(t *testing.T) {
 				os.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
 			}
 
-			req, err := http.NewRequest("POST", "/webhook", strings.NewReader(tc.body))
+			req, err := http.NewRequest("GET", "/webhook", strings.NewReader(tc.body))
 			if err != nil {
 				t.Fatal(err)
 			}
