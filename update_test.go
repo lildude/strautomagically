@@ -206,10 +206,18 @@ func TestConstructUpdate(t *testing.T) {
 		{
 			"set rowing title: 8x500",
 			&strava.UpdatableActivity{
-				Name: "8x 500m w/ 3.5' RI Row",
+				Name: "8x 500m w/ 3.5' Active RI Row",
 			},
-			"set title to 8x 500m w/ 3.5' RI Row\n",
+			"set title to 8x 500m w/ 3.5' Active RI Row\n",
 			[]byte(`{"id": 12345678987654321, "name": "8x500m/3:30r row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: 8x500 - the other one",
+			&strava.UpdatableActivity{
+				Name: "8x 500m w/ 3.5' Active RI Row",
+			},
+			"set title to 8x 500m w/ 3.5' Active RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "v5:00/1:00r...17 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
 			"set rowing title: 5x1500",
@@ -250,6 +258,14 @@ func TestConstructUpdate(t *testing.T) {
 			},
 			"set title to Waterfall of 3k, 2.5k, 2k w/ 5' RI Row\n",
 			[]byte(`{"id": 12345678987654321, "name": "v3000m/5:00r...3 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
+		},
+		{
+			"set rowing title: waterfall",
+			&strava.UpdatableActivity{
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
+			},
+			"set title to Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row\n",
+			[]byte(`{"id": 12345678987654321, "name": "v5:00/1:00r...7 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description\n AQI: ?\n"}`),
 		},
 		{
 			"set rowing title: warmup",
