@@ -168,22 +168,24 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		switch activity.Name {
 		case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
 			title = "Speed Pyramid Row w/ 1.5' Active RI per 250m work"
-		case "8x500m/3:30r row":
-			title = "8x 500m w/ 3.5' RI Row"
+		case "8x500m/3:30r row", "v5:00/1:00r...17 row":
+			title = "8x 500m w/ 3.5' Active RI Row"
 		case "5x1500m/5:00r row":
 			title = "5x 1500m w/ 5' RI Row"
 		case "4x2000m/5:00r row", "v5:00/1:00r...9 row":
 			title = "4x 2000m w/5' Active RI Row"
 		case "4x1000m/5:00r row":
 			title = "4x 1000m /5' RI Row"
-		case "v3000m/5:00r...3 row":
-			title = "Waterfall of 3k, 2.5k, 2k w/ 5' RI Row"
+		case "v3000m/5:00r...3 row", "v5:00/1:00r...7 row":
+			title = "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"
 		case "5:00 row":
 			title = "Warm-up Row"
 			update.HideFromHome = true
 		}
 		update.Name = title
-		msg = fmt.Sprintf("set title to %s", title)
+		if title != "" {
+			msg = fmt.Sprintf("set title to %s", title)
+		}
 	}
 
 	// Add weather for activity if no GPS data - assumes we were at home
@@ -198,7 +200,10 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 					update.Description = activity.Description + "\n\n"
 				}
 				update.Description += weather
-				msg += " & added weather"
+				if msg != "" {
+					msg += " & "
+				}
+				msg += "added weather"
 			}
 		}
 	}
