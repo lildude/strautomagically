@@ -42,7 +42,7 @@ type Activity struct {
 	Commute        bool      `json:"commute"`
 	Private        bool      `json:"private"`
 	WorkoutType    int       `json:"workout_type"`
-	HideFromHome   bool      `json:"hide_from_leaderboard"`
+	HideFromHome   bool      `json:"hide_from_home"`
 	GearID         string    `json:"gear_id"`
 	Description    string    `json:"description"`
 }
@@ -50,7 +50,7 @@ type Activity struct {
 type UpdatableActivity struct {
 	Commute      bool   `json:"commute"`
 	Trainer      bool   `json:"trainer"`
-	HideFromHome bool   `json:"hide_from_leaderboard"`
+	HideFromHome bool   `json:"hide_from_home"`
 	Description  string `json:"description"`
 	Name         string `json:"name"`
 	Type         string `json:"type"`
