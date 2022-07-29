@@ -100,24 +100,26 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Activity:", activity.Name)
+	log.Printf("Activity:%s (%d)", activity.Name, activity.ID)
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	update := constructUpdate(wclient, activity)
 
 	if update != nil {
-		_, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
+		updated, err := strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
 			log.Printf("unable to update activity: %s", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
+		log.Printf("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
+
 		// Cache activity ID if we've succeeded
 		err = cache.Set("strava_activity", webhook.ObjectID)
 		if err != nil {
-			log.Printf("unable to set activity id: %s", err)
+			log.Printf("unable to cache activity id: %s", err)
 		}
 	}
 
