@@ -119,6 +119,9 @@ func TestUpdateHandler(t *testing.T) {
 }
 
 func TestConstructUpdate(t *testing.T) {
+	// Discard logs to avoid polluting test output
+	log.SetOutput(ioutil.Discard)
+
 	client, mux, _, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
 		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
