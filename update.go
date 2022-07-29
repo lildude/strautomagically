@@ -162,25 +162,37 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		update.GearID = "b10013574"
 		msg = "set gear to bike"
 	}
-	// Set title for specific Pete's Plan workouts and warmups
+	// Set title for specific workouts
 	var title string
 	if activity.Type == "Rowing" {
-		switch activity.Name {
-		case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
-			title = "Speed Pyramid Row w/ 1.5' Active RI per 250m work"
-		case "8x500m/3:30r row", "v5:00/1:00r...17 row":
-			title = "8x 500m w/ 3.5' Active RI Row"
-		case "5x1500m/5:00r row":
-			title = "5x 1500m w/ 5' RI Row"
-		case "4x2000m/5:00r row", "v5:00/1:00r...9 row":
-			title = "4x 2000m w/5' Active RI Row"
-		case "4x1000m/5:00r row":
-			title = "4x 1000m /5' RI Row"
-		case "v3000m/5:00r...3 row", "v5:00/1:00r...7 row":
-			title = "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"
-		case "5:00 row":
-			title = "Warm-up Row"
-			update.HideFromHome = true
+		// Workouts created in ErgZone will have the name in the first line of the description
+		lines := strings.Split(activity.Description, "\n")
+		if len(lines) > 0 {
+			// We only want the first line if it contains the wring "w/"
+			if strings.Contains(lines[0], "w/") {
+				title = lines[0]
+			}
+		}
+
+		// Fallback to the name if there is no description or it doesn't contain "w/"
+		if title == "" {
+			switch activity.Name {
+			case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
+				title = "Speed Pyramid Row w/ 1.5' Active RI per 250m work"
+			case "8x500m/3:30r row", "v5:00/1:00r...17 row":
+				title = "8x 500m w/ 3.5' Active RI Row"
+			case "5x1500m/5:00r row":
+				title = "5x 1500m w/ 5' RI Row"
+			case "4x2000m/5:00r row", "v5:00/1:00r...9 row":
+				title = "4x 2000m w/5' Active RI Row"
+			case "4x1000m/5:00r row":
+				title = "4x 1000m /5' RI Row"
+			case "v3000m/5:00r...3 row", "v5:00/1:00r...7 row":
+				title = "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"
+			case "5:00 row":
+				title = "Warm-up Row"
+				update.HideFromHome = true
+			}
 		}
 		update.Name = title
 		if title != "" {

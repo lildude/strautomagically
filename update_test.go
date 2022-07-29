@@ -289,6 +289,15 @@ func TestConstructUpdate(t *testing.T) {
 			"set title to Warm-up Row & added weather\n",
 			[]byte(`{"id": 12345678987654321, "name": "5:00 row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "zwift_12345678987654321", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "Test activity description"}`),
 		},
+		{
+			"set rowing title from first line of description",
+			&strava.UpdatableActivity{
+				Name:        "5x 1.5k w/ 5’ Active RI",
+				Description: "5x 1.5k w/ 5’ Active RI\nIncludes 5min warm-up and 1min rest. Rests configured as active to capture all data.\n\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 🖤\n",
+			},
+			"set title to 5x 1.5k w/ 5’ Active RI & added weather\n",
+			[]byte(`{"id": 12345678987654321, "name": "Lunch Row", "distance": 28099, "start_date": "2018-02-16T14:52:54Z", "start_date_local": "2018-02-16T06:52:54Z", "elapsed_time": 4410, "external_id": "65907932.fit", "type": "Rowing", "trainer": false, "commute": false, "private": false, "workout_type": 10, "hide_from_home": false, "gear_id": "b12345678987654321", "description": "5x 1.5k w/ 5’ Active RI\nIncludes 5min warm-up and 1min rest. Rests configured as active to capture all data."}`),
+		},
 	}
 
 	for _, tc := range tests {
