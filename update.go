@@ -173,6 +173,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 			// We only want the first line if the description contains the https://erg.zone URL
 			if strings.Contains(activity.Description, "https://erg.zone") {
 				title = lines[0]
+				update.Description = "\n"
 			}
 		}
 
@@ -210,7 +211,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 				log.Printf("unable to get weather: %s", err)
 			}
 			if weather != "" {
-				if activity.Description != "" {
+				if activity.Description != "" && update.Description != "\n" {
 					update.Description = activity.Description + "\n\n"
 				}
 				update.Description += weather
