@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -30,5 +31,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"hub.challenge": challenge[0]}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
+		return
 	}
 }

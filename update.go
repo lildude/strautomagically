@@ -100,24 +100,26 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("Activity:", activity.Name)
+	log.Printf("Activity:%s (%d)", activity.Name, activity.ID)
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	update := constructUpdate(wclient, activity)
 
 	if update != nil {
-		_, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
+		updated, err := strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
 			log.Printf("unable to update activity: %s", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
+		log.Printf("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
+
 		// Cache activity ID if we've succeeded
 		err = cache.Set("strava_activity", webhook.ObjectID)
 		if err != nil {
-			log.Printf("unable to set activity id: %s", err)
+			log.Printf("unable to cache activity id: %s", err)
 		}
 	}
 
@@ -168,13 +170,14 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		// Workouts created in ErgZone will have the name in the first line of the description
 		lines := strings.Split(activity.Description, "\n")
 		if len(lines) > 0 {
-			// We only want the first line if it contains the wring "w/"
-			if strings.Contains(lines[0], "w/") {
+			// We only want the first line if the description contains the https://erg.zone URL
+			if strings.Contains(activity.Description, "https://erg.zone") {
 				title = lines[0]
+				update.Description = "\n"
 			}
 		}
 
-		// Fallback to the name if there is no description or it doesn't contain "w/"
+		// Fallback to the name if there is no description or it doesn't contain "https://erg.zone"
 		if title == "" {
 			switch activity.Name {
 			case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
@@ -208,7 +211,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 				log.Printf("unable to get weather: %s", err)
 			}
 			if weather != "" {
-				if activity.Description != "" {
+				if activity.Description != "" && update.Description != "\n" {
 					update.Description = activity.Description + "\n\n"
 				}
 				update.Description += weather

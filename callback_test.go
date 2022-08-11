@@ -4,13 +4,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
 
 func TestSuccessfulCallback(t *testing.T) {
-	// skip until we've refactored
-	t.SkipNow()
-
+	os.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=mytoken", nil)
 	w := httptest.NewRecorder()
 	callbackHandler(w, req)
@@ -74,6 +73,7 @@ func TestMissingVerifyToken(t *testing.T) {
 }
 
 func TestIncorrectVerifyToken(t *testing.T) {
+	os.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=challenge&hub.verify_token=wrong", nil)
 	w := httptest.NewRecorder()
 	callbackHandler(w, req)

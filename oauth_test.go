@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,7 +16,7 @@ import (
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	// log.SetOutput(ioutil.Discard)
+	log.SetOutput(ioutil.Discard)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
