@@ -1,0 +1,16 @@
+{
+  "id": 12345678987654320,
+  "name": "Test Activity - Updated",
+  "distance": 28099,
+  "start_date": "2018-02-16T14:52:54Z",
+  "start_date_local": "2018-02-16T06:52:54Z",
+  "elapsed_time": 4410,
+  "type": "Run",
+  "trainer": true,
+  "commute": true,
+  "private": false,
+  "workout_type": 10,
+  "hide_from_home": true,
+  "gear_id": "b1234",
+  "description": "Test activity description - Updated"
+}
