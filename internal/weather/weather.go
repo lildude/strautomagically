@@ -46,10 +46,10 @@ type pollution struct {
 }
 
 // GetWeather returns the weather conditions in a pretty string
-func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) (string, error) {
-	sts := start_date.Unix()
-	end_date := start_date.Add(time.Duration(elapsed) * time.Second)
-	ets := end_date.Unix()
+func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (string, error) {
+	sts := startDate.Unix()
+	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
+	ets := endDate.Unix()
 
 	// Get weather at start of activity
 	sw, err := getWeather(c, sts)
@@ -60,7 +60,7 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) (stri
 	// Get weather at end of activity
 	// Only get this if we cross the hour as it'll be the same as the start
 	ew := data{}
-	if start_date.Hour() == end_date.Hour() {
+	if startDate.Hour() == endDate.Hour() {
 		ew = sw
 	} else {
 		ew, err = getWeather(c, ets)
@@ -93,15 +93,16 @@ func GetWeatherLine(c *client.Client, start_date time.Time, elapsed int32) (stri
 	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
 	// TODO: make me templatable
-	// :start.weatherIcon :start.summary | 🌡 :start.temperature–:end.temperature°C | 👌 :activityFeel°C | 💦 :start.humidity–:end.humidity% | 💨 :start.windSpeed–:end.windSpeedkm/h :start.windDirection | AQI :airquality.icon
-	//⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
+	// ⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
 
+	// mps -> kph
+	speedFactor := 3.6
 	weather := fmt.Sprintf("%s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
 		weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
 		int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
 		int(math.Round(sw.FeelsLike)),
 		sw.Humidity, ew.Humidity,
-		int(math.Round(sw.WindSpeed)*3.6), int(math.Round(ew.WindSpeed)*3.6),
+		int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
 		windDirectionIcon(sw.WindDeg),
 		aqi)
 
@@ -122,7 +123,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 
 	// Get weather at start of activity
 	w := weatherData{}
-	_, err = c.Do(context.Background(), req, &w)
+	_, err = c.Do(context.Background(), req, &w) //nolint:bodyclose
 	if err != nil {
 		log.Println(err)
 		return data{}, err
@@ -132,11 +133,11 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 }
 
 // getPollution returns the AQI icon for the given period
-func getPollution(c *client.Client, start_date, end_date int64) string {
+func getPollution(c *client.Client, startDate, endDate int64) string {
 	aqi := "?"
 	params := defaultParams()
-	params.Set("start", fmt.Sprintf("%d", start_date))
-	params.Set("end", fmt.Sprintf("%d", end_date))
+	params.Set("start", fmt.Sprintf("%d", startDate))
+	params.Set("end", fmt.Sprintf("%d", endDate))
 	c.BaseURL.Path = "/data/2.5/air_pollution/history"
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest("GET", "", nil)
@@ -146,7 +147,7 @@ func getPollution(c *client.Client, start_date, end_date int64) string {
 	}
 
 	p := pollution{}
-	_, err = c.Do(context.Background(), req, &p)
+	_, err = c.Do(context.Background(), req, &p) //nolint:bodyclose
 	if err != nil {
 		log.Println(err)
 		return aqi

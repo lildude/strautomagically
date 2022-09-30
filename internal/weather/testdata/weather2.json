@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "temp": 23.13,
+      "feels_like": 26.44,
+      "humidity": 94,
+      "clouds": 13,
+      "wind_speed": 0.6,
+      "wind_deg": 40,
+      "weather": [
+        {
+          "main": "Clear",
+          "description": "clear sky",
+          "icon": "01d"
+        }
+      ]
+    }
+  ]
+}

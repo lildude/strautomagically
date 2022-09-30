@@ -2,7 +2,7 @@ package weather
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -14,21 +14,20 @@ import (
 	"time"
 
 	"github.com/lildude/strautomagically/internal/client"
-	gc "github.com/lildude/strautomagically/internal/client"
 )
 
 func TestGetWeather(t *testing.T) {
-	client, mux, _, teardown := setup()
+	rc, mux, teardown := setup()
 	defer teardown()
 
-	lat_in := "51.509865"
-	lon_in := "-0.118092"
-	appid_in := "123456789"
-	os.Setenv("OWM_LAT", lat_in)
-	os.Setenv("OWM_LON", lon_in)
-	os.Setenv("OWM_API_KEY", appid_in)
-	start_in := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC).Unix()
-	start_out := strconv.FormatInt(start_in, 10)
+	latIn := "51.509865"
+	lonIn := "-0.118092"
+	appIDIn := "123456789"
+	os.Setenv("OWM_LAT", latIn)
+	os.Setenv("OWM_LON", lonIn)
+	os.Setenv("OWM_API_KEY", appIDIn)
+	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC).Unix()
+	startOut := strconv.FormatInt(startIn, 10)
 
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -39,15 +38,18 @@ func TestGetWeather(t *testing.T) {
 		lang := q.Get("lang")
 		dt := q.Get("dt")
 		// Confirm we receive the right query params
-		if lat != lat_in || lon != lon_in || appid != appid_in || units != "metric" || lang != "en" || dt != start_out {
-			t.Errorf("Expected lat=%s, lon=%s, appid=%s, units=metric, lang=en, dt=%s, got lat=%s, lon=%s, appid=%s, units=%s, lang=%s, dt=%s", lat_in, lon_in, appid_in, start_out, lat, lon, appid, units, lang, dt)
+		if lat != latIn || lon != lonIn || appid != appIDIn || units != "metric" || lang != "en" || dt != startOut {
+			t.Errorf(
+				"Expected lat=%s, lon=%s, appid=%s, units=metric, lang=en, dt=%s, got lat=%s, lon=%s, appid=%s, units=%s, lang=%s, dt=%s",
+				latIn, lonIn, appIDIn, startOut, lat, lon, appid, units, lang, dt,
+			)
 		}
 
-		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
-		fmt.Fprintln(w, resp)
+		resp, _ := os.ReadFile("testdata/weather.json")
+		fmt.Fprintln(w, string(resp))
 	})
 
-	got, err := getWeather(client, start_in)
+	got, err := getWeather(rc, startIn)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -71,13 +73,13 @@ func TestGetWeather(t *testing.T) {
 }
 
 func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
-	client, _, _, teardown := setup() // We're not using the mux as we'll be failing before then
+	rc, _, teardown := setup() // We're not using the mux as we'll be failing before then
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
-	got, err := getWeather(client, 0)
+	got, err := getWeather(rc, 0)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -88,23 +90,23 @@ func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
 }
 
 func TestGetWeatherLineSameHour(t *testing.T) {
-	client, mux, _, teardown := setup()
+	rc, mux, teardown := setup()
 	defer teardown()
 
-	start_in := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
+	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
 	elapsed := int32(60 * 40)
 
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
-		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
-		fmt.Fprintln(w, resp)
+		resp, _ := os.ReadFile("testdata/weather.json")
+		fmt.Fprintln(w, string(resp))
 	})
 
 	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
-		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`
+		resp := `{"list":[{"dt":1605182401,"main":{"aqi":1}}]}`
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(client, start_in, elapsed)
+	got, err := GetWeatherLine(rc, startIn, elapsed)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -115,28 +117,28 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 }
 
 func TestGetWeatherLineDiffHours(t *testing.T) {
-	client, mux, _, teardown := setup()
+	rc, mux, teardown := setup()
 	defer teardown()
 
-	start_in := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
-	start_out := strconv.FormatInt(start_in.Unix(), 10)
+	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
+	startOut := strconv.FormatInt(startIn.Unix(), 10)
 	elapsed := int32(60 * 65)
-	end_in := start_in.Add(time.Duration(elapsed) * time.Second)
-	end_out := strconv.FormatInt(end_in.Unix(), 10)
+	endIn := startIn.Add(time.Duration(elapsed) * time.Second)
+	endOut := strconv.FormatInt(endIn.Unix(), 10)
 
 	// Handle start request
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
 		dt := r.URL.Query().Get("dt")
 
 		// Return response for first request
-		var resp string
-		if dt == start_out {
-			resp = `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
+		var resp []byte
+		if dt == startOut {
+			resp, _ = os.ReadFile("testdata/weather.json")
 		}
-		if dt == end_out {
-			resp = `{"data":[{"temp":23.13,"feels_like":26.44,"humidity":94,"clouds":13,"wind_speed":0.6,"wind_deg":40,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
+		if dt == endOut {
+			resp, _ = os.ReadFile("testdata/weather2.json")
 		}
-		fmt.Fprintln(w, resp)
+		fmt.Fprintln(w, string(resp))
 	})
 
 	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
@@ -144,15 +146,15 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 		start := q.Get("start")
 		end := q.Get("end")
 		// Confirm we receive the right query params
-		if start != start_out || end != end_out {
-			t.Errorf("Expected start=%s, end=%s, got start=%s, end=%s", start_out, end_out, start, end)
+		if start != startOut || end != endOut {
+			t.Errorf("Expected start=%s, end=%s, got start=%s, end=%s", startOut, endOut, start, end)
 		}
 
 		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(client, start_in, elapsed)
+	got, err := GetWeatherLine(rc, startIn, elapsed)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -190,13 +192,13 @@ func TestWindDirectionIcon(t *testing.T) {
 }
 
 func TestGetPollutionForAllLevels(t *testing.T) {
-	client, mux, _, teardown := setup()
+	rc, mux, teardown := setup()
 	defer teardown()
 
 	tests := []struct {
-		mock_aqi int
-		want     string
-	}{ // Not sure why I can't do direct emoji comparision here
+		mockAQI int
+		want    string
+	}{ // Not sure why I can't do direct emoji comparison here
 		{1, `\U1F49A`}, // 💚
 		{2, `\U1F49B`}, // 💛
 		{3, `\U1F9E1`}, // 🧡
@@ -211,24 +213,24 @@ func TestGetPollutionForAllLevels(t *testing.T) {
 	})
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%d", tt.mock_aqi), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%d", tt.mockAQI), func(t *testing.T) {
 			// Mock the aqi by fudging the start_date as we don't care about it in this test
-			got := getPollution(client, int64(tt.mock_aqi), 123999)
+			got := getPollution(rc, int64(tt.mockAQI), 123999)
 			if got == tt.want {
-				t.Errorf("aqi %d expected %q, got %q", tt.mock_aqi, tt.want, got)
+				t.Errorf("aqi %d expected %q, got %q", tt.mockAQI, tt.want, got)
 			}
 		})
 	}
 }
 
 func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
-	client, _, _, teardown := setup() // We're not using the mux as we'll be failing before then
+	rc, _, teardown := setup() // We're not using the mux as we'll be failing before then
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
-	got := getPollution(client, 0, 0)
+	got := getPollution(rc, 0, 0)
 	if got != "?" {
 		t.Errorf("expected ?, got %q", got)
 	}
@@ -237,12 +239,12 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 // Setup establishes a test Server that can be used to provide mock responses during testing.
 // It returns a pointer to a client, a mux, the server URL and a teardown function that
 // must be called when testing is complete.
-func setup() (client *client.Client, mux *http.ServeMux, serverURL string, teardown func()) {
+func setup() (rc *client.Client, mux *http.ServeMux, teardown func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	url, _ := url.Parse(server.URL + "/")
-	c := gc.NewClient(url, nil)
+	surl, _ := url.Parse(server.URL + "/")
+	c := client.NewClient(surl, nil)
 
-	return c, mux, server.URL, server.Close
+	return c, mux, server.Close
 }
