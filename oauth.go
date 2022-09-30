@@ -21,7 +21,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -29,7 +29,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authToken := &oauth2.Token{}
-	cache.GetJSON("strava_auth_token", &authToken) //nolint:errcheck
+	che.GetJSON("strava_auth_token", &authToken) //nolint:errcheck
 
 	if state == "" {
 		if authToken.AccessToken == "" {
@@ -63,10 +63,11 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = cache.SetJSON("strava_auth_token", token)
+		err = che.SetJSON("strava_auth_token", token)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 		log.Printf("successfully authenticated: %s", athlete["username"])
 		http.Redirect(w, r, "/", http.StatusFound)
@@ -76,6 +77,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 	}
 }
