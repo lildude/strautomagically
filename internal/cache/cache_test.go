@@ -5,13 +5,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
+	miniredis "github.com/alicebob/miniredis/v2"
 )
 
 func TestSetGet(t *testing.T) {
 	r := miniredis.RunT(t)
 	defer r.Close()
-	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		t.Error(err)
@@ -32,7 +32,7 @@ func TestSetGet(t *testing.T) {
 func TestSetGetJSON(t *testing.T) {
 	r := miniredis.RunT(t)
 	defer r.Close()
-	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		t.Error(err)
