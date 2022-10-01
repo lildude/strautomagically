@@ -1,31 +1,37 @@
-include .env
+-include .env
 
-.PHONY: app_url
-app_url:
-	$(eval export URL=https://$$(shell heroku domains --app=${HEROKU_APP} | tail -1))
+SHA=`git show --quiet --format=format:%H`
 
-.PHONY: heroku
-heroku: app_url
-	$(if ${STRAVA_CLIENT_ID},,$(error must set STRAVA_CLIENT_ID in .env))
-	$(if ${STRAVA_CLIENT_SECRET},,$(error must set STRAVA_CLIENT_SECRET in .env))
-	heroku config:set STRAVA_CLIENT_ID=${STRAVA_CLIENT_ID} \
-	STRAVA_CLIENT_SECRET=${STRAVA_CLIENT_SECRET} \
-	STRAVA_REDIRECT_URI=${URL}/auth \
-	STRAVA_CALLBACK_URI=${URL}/webhook \
-	STRAVA_VERIFY_TOKEN=${STRAVA_VERIFY_TOKEN} \
-	STATE_TOKEN=${STATE_TOKEN} \
-	OWM_API_KEY=${OWM_API_KEY} \
-	OWM_LAT=${OWM_LAT} \
-	OWM_LON=${OWM_LON}
+build:
+	go build -o app cmd/strautomagically/main.go
 
-.PHONY: heroku-local
-heroku-local:
-	go build -o bin/strautomagically -v && heroku local --port 8080
+build_azure:
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o app cmd/strautomagically/main.go
 
-.PHONY: reset-auth-token
-reset-auth-token:
-	echo DEL strava_auth_token | heroku redis:cli -a ${HEROKU_APP} -c ${HEROKU_APP}
+lint:
+	golangci-lint run --timeout=20m
 
-.PHONY: reset-last-activity
+test:
+	go test -v ./...
+
+coverage:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -func coverage.out
+
+start: build
+	func start
+
+get-auth-token:
+	echo GET strava_auth_token | redis-cli -u ${REDIS_URL}
+
+get-last-activity:
+	echo GET strava_activity | redis-cli -u ${REDIS_URL}
+
 reset-last-activity:
-	echo DEL strava_activity | heroku redis:cli -a ${HEROKU_APP} -c ${HEROKU_APP}
+	echo DEL strava_activity | redis-cli -u ${REDIS_URL}
+
+reset-auth-token:
+	echo DEL strava_auth_token | redis-cli -u ${REDIS_URL}
+
+last-uid:
+	echo GET starling_webhookevent_uid | redis-cli -u ${REDIS_URL}
