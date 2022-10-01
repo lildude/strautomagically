@@ -3,8 +3,8 @@
 local.settings.json
 internal
 .env*
-.out
-.http
+*.out
+*.http
 go.mod
 go.sum
 LICENSE
@@ -13,3 +13,4 @@ Procfile
 *.md
 Makefile
 .golangci.yml
+cmd/
