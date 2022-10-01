@@ -1,4 +1,4 @@
-package main
+package update
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func updateHandler(w http.ResponseWriter, r *http.Request) {
+func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	var webhook strava.WebhookPayload
 	if r.Body == nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -27,7 +27,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := ioutil.ReadAll(r.Body)
-	if err := json.Unmarshal([]byte(body), &webhook); err != nil {
+	if err := json.Unmarshal(body, &webhook); err != nil {
 		log.Println("unable to unmarshal webhook payload:", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
@@ -40,7 +40,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -48,15 +48,15 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// See if we've seen this activity before
-	aid, err := cache.Get("strava_activity")
+	aid, err := rcache.Get("strava_activity")
 	if err != nil {
 		log.Printf("unable to get activity id: %s", err)
 	}
 	// Convert aid to int
 	s, _ := aid.(string)
-	aid_i, _ := strconv.ParseInt(s, 10, 64)
+	aidInt, _ := strconv.ParseInt(s, 10, 64)
 
-	if aid_i == webhook.ObjectID {
+	if aidInt == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
 		log.Println("ignoring repeat event")
 		return
@@ -65,7 +65,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	// Create the OAuth http.Client
 	ctx := context.Background()
 	authToken := &oauth2.Token{}
-	err = cache.GetJSON("strava_auth_token", &authToken)
+	err = rcache.GetJSON("strava_auth_token", &authToken)
 	if err != nil {
 		log.Printf("unable to get token: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -83,7 +83,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken {
-		err = cache.SetJSON("strava_auth_token", newToken)
+		err = rcache.SetJSON("strava_auth_token", newToken)
 		if err != nil {
 			log.Printf("unable to store token: %s", err)
 			return
@@ -107,7 +107,8 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	update := constructUpdate(wclient, activity)
 
 	if update != nil {
-		updated, err := strava.UpdateActivity(sc, webhook.ObjectID, update)
+		var updated *strava.Activity
+		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
 			log.Printf("unable to update activity: %s", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -117,7 +118,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
 
 		// Cache activity ID if we've succeeded
-		err = cache.Set("strava_activity", webhook.ObjectID)
+		err = rcache.Set("strava_activity", webhook.ObjectID)
 		if err != nil {
 			log.Printf("unable to cache activity id: %s", err)
 		}
@@ -129,9 +130,10 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity {
+func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity { //nolint:funlen
 	var update strava.UpdatableActivity
 	msg := "nothing to do"
+	const trainerID = "b9880609"
 
 	// TODO: Move these to somewhere more configurable
 	// Mute walks and set shoes
@@ -147,23 +149,27 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		msg = "set humane burpees title"
 	}
 	// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
-	if activity.Type == "Ride" && activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
-		update.Name = "TR: " + activity.Name
-		update.GearID = "b9880609"
-		update.Trainer = true
-		msg = "prefixed name of ride with TR and set gear to trainer"
+	if activity.Type == "Ride" {
+		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
+			update.Name = "TR: " + activity.Name
+			update.GearID = trainerID
+			update.Trainer = true
+			msg = "prefixed name of ride with TR and set gear to trainer"
+		}
+		// Set gear to b10013574 if activity is a ride and not on trainer
+		if !activity.Trainer {
+			update.GearID = "b10013574"
+			msg = "set gear to bike"
+		}
 	}
-	// Set gear to b9880609 if activity is a ride and external_id starts with zwift
+
+	// Set gear to trainerID if activity is a ride and external_id starts with zwift
 	if activity.Type == "VirtualRide" && activity.ExternalID != "" && activity.ExternalID[0:5] == "zwift" {
-		update.GearID = "b9880609"
+		update.GearID = trainerID
 		update.Trainer = true
 		msg = "set gear to trainer"
 	}
-	// Set gear to b10013574 if activity is a ride and not on trainer
-	if activity.Type == "Ride" && !activity.Trainer {
-		update.GearID = "b10013574"
-		msg = "set gear to bike"
-	}
+
 	// Set title for specific workouts
 	var title string
 	if activity.Type == "Rowing" {
@@ -206,15 +212,15 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(activity.StartLatlng) == 0 {
 		if !strings.Contains(activity.Description, "AQI") {
-			weather, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+			w, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
 			if err != nil {
 				log.Printf("unable to get weather: %s", err)
 			}
-			if weather != "" {
+			if w != "" {
 				if activity.Description != "" && update.Description != "\n" {
 					update.Description = activity.Description + "\n\n"
 				}
-				update.Description += weather
+				update.Description += w
 				if msg != "" {
 					msg += " & "
 				}

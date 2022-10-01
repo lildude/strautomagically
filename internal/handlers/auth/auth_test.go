@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"fmt"
@@ -85,7 +85,7 @@ func TestAuthHandler(t *testing.T) {
 				t.Fatal(err)
 			}
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(authHandler)
+			handler := http.HandlerFunc(AuthHandler)
 			handler.ServeHTTP(rr, req)
 
 			if status := rr.Code; status != tc.want {

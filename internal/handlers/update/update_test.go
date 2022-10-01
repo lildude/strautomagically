@@ -1,10 +1,10 @@
-package main
+package update
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -17,13 +17,12 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/jarcoal/httpmock"
 	"github.com/lildude/strautomagically/internal/client"
-	ic "github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 )
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -103,12 +102,13 @@ func TestUpdateHandler(t *testing.T) {
 				os.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
 			}
 
-			req, err := http.NewRequest("GET", "/webhook", strings.NewReader(tc.body))
+			req, err := http.NewRequest("GET", "/webhook", strings.NewReader(tc.body)) //nolint:noctx
 			if err != nil {
 				t.Fatal(err)
 			}
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(updateHandler) // Fudging it as webhookHandler handles /webhook but calls updateHandler if it receives a POST request
+			// Fudging it as webhookHandler handles /webhook but calls updateHandler if it receives a POST request
+			handler := http.HandlerFunc(UpdateHandler)
 			handler.ServeHTTP(rr, req)
 
 			if status := rr.Code; status != tc.want {
@@ -118,11 +118,11 @@ func TestUpdateHandler(t *testing.T) {
 	}
 }
 
-func TestConstructUpdate(t *testing.T) {
+func TestConstructUpdate(t *testing.T) { //nolint:funlen
 	// Discard logs to avoid polluting test output
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
-	client, mux, _, _ := setup()
+	rc, mux, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
 		resp := `{"data":[{"temp":19.13,"feels_like":16.44,"humidity":64,"clouds":0,"wind_speed":3.6,"wind_deg":340,"weather":[{"main":"Clear","description":"clear sky","icon":"01d"}]}]}`
 		fmt.Fprintln(w, resp)
@@ -313,7 +313,7 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got := constructUpdate(client, &a)
+			got := constructUpdate(rc, &a)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %v, got %v", tc.want, got)
 			}
@@ -327,12 +327,12 @@ func TestConstructUpdate(t *testing.T) {
 // Setup establishes a test Server that can be used to provide mock responses during testing.
 // It returns a pointer to a client, a mux, the server URL and a teardown function that
 // must be called when testing is complete.
-func setup() (client *client.Client, mux *http.ServeMux, serverURL string, teardown func()) {
+func setup() (rc *client.Client, mux *http.ServeMux, teardown func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	url, _ := url.Parse(server.URL + "/")
-	c := ic.NewClient(url, nil)
+	surl, _ := url.Parse(server.URL + "/")
+	c := client.NewClient(surl, nil)
 
-	return c, mux, server.URL, server.Close
+	return c, mux, server.Close
 }

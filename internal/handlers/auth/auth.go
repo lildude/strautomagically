@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func authHandler(w http.ResponseWriter, r *http.Request) {
+func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("unable to parse form: %s", err)

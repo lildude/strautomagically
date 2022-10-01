@@ -1,4 +1,4 @@
-package main
+package callback
 
 import (
 	"io/ioutil"
@@ -12,7 +12,7 @@ func TestSuccessfulCallback(t *testing.T) {
 	os.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=mytoken", nil)
 	w := httptest.NewRecorder()
-	callbackHandler(w, req)
+	CallbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
@@ -33,7 +33,7 @@ func TestSuccessfulCallback(t *testing.T) {
 func TestMissingChallenge(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe", nil)
 	w := httptest.NewRecorder()
-	callbackHandler(w, req)
+	CallbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
@@ -54,7 +54,7 @@ func TestMissingChallenge(t *testing.T) {
 func TestMissingVerifyToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=challenge", nil)
 	w := httptest.NewRecorder()
-	callbackHandler(w, req)
+	CallbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
@@ -76,7 +76,7 @@ func TestIncorrectVerifyToken(t *testing.T) {
 	os.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
 	req := httptest.NewRequest(http.MethodGet, "/?hub.mode=subscribe&hub.challenge=challenge&hub.verify_token=wrong", nil)
 	w := httptest.NewRecorder()
-	callbackHandler(w, req)
+	CallbackHandler(w, req)
 	res := w.Result()
 	defer res.Body.Close()
 	data, err := ioutil.ReadAll(res.Body)
