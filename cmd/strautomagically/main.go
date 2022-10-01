@@ -14,21 +14,17 @@ import (
 )
 
 func main() {
-	if os.Getenv("DYNO") != "" {
-		log.SetFlags(0)
+	port := ":8080"
+	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
+		port = ":" + val
 	}
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-	http.HandleFunc("/", indexHandler)
+	http.HandleFunc("/start", indexHandler)
 	http.HandleFunc("/auth", auth.AuthHandler)
 	// http.HandleFunc("/callback", callback.CallbackHandler)
 	// http.HandleFunc("/update", update.UpdateHandler)
 	http.HandleFunc("/webhook", webhookHandler)
 	log.Println("Starting server on port", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(port, nil))
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {

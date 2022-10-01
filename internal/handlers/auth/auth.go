@@ -37,7 +37,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/start", http.StatusFound)
 		}
 	} else {
 		if state != stateToken {
@@ -70,7 +70,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("successfully authenticated: %s", athlete["username"])
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, "/start", http.StatusFound)
 
 		// Subscribe to the activity stream - should this be here?
 		err = Subscribe()
