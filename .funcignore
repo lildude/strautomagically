@@ -1,0 +1,15 @@
+.git*
+.vscode
+local.settings.json
+internal
+.env*
+.out
+.http
+go.mod
+go.sum
+LICENSE
+*.go
+Procfile
+*.md
+Makefile
+.golangci.yml
