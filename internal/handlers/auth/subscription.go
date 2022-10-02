@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -12,14 +12,17 @@ import (
 
 // TODO: Rewrite me as I'm a hacky mess.
 func existingSubscription() bool {
-	u := fmt.Sprintf("%s/push_subscriptions?client_id=%s&client_secret=%s", "https://www.strava.com/api/v3", os.Getenv("STRAVA_CLIENT_ID"), os.Getenv("STRAVA_CLIENT_SECRET"))
-	resp, err := http.Get(u)
+	u := fmt.Sprintf("%s/push_subscriptions?client_id=%s&client_secret=%s",
+		"https://www.strava.com/api/v3",
+		os.Getenv("STRAVA_CLIENT_ID"),
+		os.Getenv("STRAVA_CLIENT_SECRET"))
+	resp, err := http.Get(u) //nolint:gosec,noctx
 	if err != nil {
 		log.Printf("GET strava /push_subscriptions: %s", err)
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("failed to read push_subscriptions body: %s", err)
 	}
@@ -41,7 +44,7 @@ func Subscribe() error {
 		return nil
 	}
 
-	resp, err := http.PostForm("https://www.strava.com/api/v3/push_subscriptions", url.Values{
+	resp, err := http.PostForm("https://www.strava.com/api/v3/push_subscriptions", url.Values{ //nolint:noctx
 		"client_id":     {os.Getenv("STRAVA_CLIENT_ID")},
 		"client_secret": {os.Getenv("STRAVA_CLIENT_SECRET")},
 		"callback_url":  {os.Getenv("STRAVA_CALLBACK_URI")},
@@ -57,7 +60,7 @@ func Subscribe() error {
 		return nil
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("failed to read push_subscriptions body: %s", err)
 		return err

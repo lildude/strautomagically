@@ -20,11 +20,9 @@ func main() {
 	}
 	http.HandleFunc("/start", indexHandler)
 	http.HandleFunc("/auth", auth.AuthHandler)
-	// http.HandleFunc("/callback", callback.CallbackHandler)
-	// http.HandleFunc("/update", update.UpdateHandler)
 	http.HandleFunc("/webhook", webhookHandler)
 	log.Println("Starting server on port", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(http.ListenAndServe(port, nil)) //#nosec: G114
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
