@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -26,7 +26,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		return
 	}
 
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 	if err := json.Unmarshal(body, &webhook); err != nil {
 		log.Println("unable to unmarshal webhook payload:", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -50,7 +50,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	// See if we've seen this activity before
 	aid, err := rcache.Get("strava_activity")
 	if err != nil {
-		log.Printf("unable to get activity id: %s", err)
+		log.Printf("unable to get activity id from cache: %s", err)
 	}
 	// Convert aid to int
 	s, _ := aid.(string)
@@ -106,7 +106,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	wclient := client.NewClient(baseURL, nil)
 	update := constructUpdate(wclient, activity)
 
-	if update != nil {
+	if (&strava.UpdatableActivity{}) != update {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
@@ -130,49 +130,35 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity { //nolint:funlen
+func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity { //nolint:funlen,gocyclo
 	var update strava.UpdatableActivity
-	msg := "nothing to do"
-	const trainerID = "b9880609"
+	var title string
+	var msg string
+	const trainer = "b9880609" // Tacx Neo 2T Turbo
+	const bike = "b10013574"   // Dolan Tuono Disc
+	const shoes = "g10043849"  // No name, Not running shoes
 
 	// TODO: Move these to somewhere more configurable
-	// Mute walks and set shoes
-	if activity.Type == "Walk" {
-		update.HideFromHome = true
-		update.GearID = "g10043849"
-		msg = "muted walk"
-	}
-	// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
-	if activity.Type == "WeightTraining" && activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
-		update.HideFromHome = true
-		update.Name = "Humane Burpees"
-		msg = "set humane burpees title"
-	}
-	// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
-	if activity.Type == "Ride" {
+	switch activity.Type {
+	// I'll never handcycle. This is used for testing only
+	case "Handcycle":
+		break
+
+	case "Ride":
+		// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
 		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
 			update.Name = "TR: " + activity.Name
-			update.GearID = trainerID
+			update.GearID = trainer
 			update.Trainer = true
 			msg = "prefixed name of ride with TR and set gear to trainer"
 		}
 		// Set gear to b10013574 if activity is a ride and not on trainer
 		if !activity.Trainer {
-			update.GearID = "b10013574"
+			update.GearID = bike
 			msg = "set gear to bike"
 		}
-	}
 
-	// Set gear to trainerID if activity is a ride and external_id starts with zwift
-	if activity.Type == "VirtualRide" && activity.ExternalID != "" && activity.ExternalID[0:5] == "zwift" {
-		update.GearID = trainerID
-		update.Trainer = true
-		msg = "set gear to trainer"
-	}
-
-	// Set title for specific workouts
-	var title string
-	if activity.Type == "Rowing" {
+	case "Rowing":
 		// Workouts created in ErgZone will have the name in the first line of the description
 		lines := strings.Split(activity.Description, "\n")
 		if len(lines) > 0 {
@@ -207,6 +193,29 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		if title != "" {
 			msg = fmt.Sprintf("set title to %s", title)
 		}
+
+	case "Run":
+		break
+
+	case "VirtualRide":
+		// Set gear to trainer if activity is a ride and external_id starts with zwift
+		if activity.ExternalID != "" && activity.ExternalID[0:5] == "zwift" {
+			update.GearID = trainer
+			update.Trainer = true
+			msg = "set gear to trainer"
+		}
+	case "Walk":
+		// Mute walks and set shoes
+		update.HideFromHome = true
+		update.GearID = shoes
+		msg = "muted walk"
+	case "WeightTraining":
+		// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
+		if activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
+			update.HideFromHome = true
+			update.Name = "Humane Burpees"
+			msg = "set humane burpees title"
+		}
 	}
 
 	// Add weather for activity if no GPS data - assumes we were at home
@@ -227,6 +236,10 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 				msg += "added weather"
 			}
 		}
+	}
+
+	if msg == "" {
+		msg = "nothing to do"
 	}
 
 	log.Println(msg)
