@@ -115,7 +115,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 	params.Add("dt", fmt.Sprintf("%d", dt))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
-	req, err := c.NewRequest("GET", "", nil)
+	req, err := c.NewRequest(context.Background(), "GET", "", nil)
 	if err != nil {
 		log.Println(err)
 		return data{}, err
@@ -123,11 +123,12 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 
 	// Get weather at start of activity
 	w := weatherData{}
-	_, err = c.Do(context.Background(), req, &w) //nolint:bodyclose
+	r, err := c.Do(req, &w)
 	if err != nil {
 		log.Println(err)
 		return data{}, err
 	}
+	defer r.Body.Close()
 
 	return w.Data[0], nil
 }
@@ -140,18 +141,19 @@ func getPollution(c *client.Client, startDate, endDate int64) string {
 	params.Set("end", fmt.Sprintf("%d", endDate))
 	c.BaseURL.Path = "/data/2.5/air_pollution/history"
 	c.BaseURL.RawQuery = params.Encode()
-	req, err := c.NewRequest("GET", "", nil)
+	req, err := c.NewRequest(context.Background(), "GET", "", nil)
 	if err != nil {
 		log.Println(err)
 		return aqi
 	}
 
 	p := pollution{}
-	_, err = c.Do(context.Background(), req, &p) //nolint:bodyclose
+	r, err := c.Do(req, &p)
 	if err != nil {
 		log.Println(err)
 		return aqi
 	}
+	defer r.Body.Close()
 
 	aqiIcon := map[int]string{
 		1: `💚`, // Good
