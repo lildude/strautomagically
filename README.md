@@ -40,7 +40,7 @@ Optional: If you want to add weather information to your entries, you will need 
 ### Deployment
 
 1. Create the Azure Functions app...
-  - in the Azure portal:22
+  - in the Azure portal:
     <details><summary>How to set up a custom handler Azure Function</summary>
     <p>
 
