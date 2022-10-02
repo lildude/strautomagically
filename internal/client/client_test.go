@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -43,9 +43,11 @@ func TestNewRequest(t *testing.T) {
 
 	t.Run("valid request", func(tc *testing.T) {
 		inURL, outURL := "foo", baseURL.String()+"foo"
-		inBody, outBody := &TestInfo{Age: 99, Weight: 102, Gender: "ano", Email: "user@example.com", Height: 184}, `{"age":99,"email":"user@example.com","gender":"ano","height":184,"weight":102}`+"\n"
+		inBody, outBody := &TestInfo{
+			Age: 99, Weight: 102, Gender: "ano", Email: "user@example.com", Height: 184,
+		}, `{"age":99,"email":"user@example.com","gender":"ano","height":184,"weight":102}`+"\n"
 
-		req, err := c.NewRequest("GET", inURL, inBody)
+		req, err := c.NewRequest(context.Background(), "GET", inURL, inBody)
 		if err != nil {
 			tc.Errorf("Unexpected error: %s", err)
 		}
@@ -53,7 +55,7 @@ func TestNewRequest(t *testing.T) {
 			tc.Errorf("Expecting URL %v, got %v", outURL, req.URL.String())
 		}
 
-		body, _ := ioutil.ReadAll(req.Body)
+		body, _ := io.ReadAll(req.Body)
 		if string(body) != outBody {
 			tc.Errorf("Expecting body %v, got %v", outBody, string(body))
 		}
@@ -67,28 +69,28 @@ func TestNewRequest(t *testing.T) {
 
 	t.Run("request with invalid JSON", func(tc *testing.T) {
 		type T struct{ A map[interface{}]interface{} }
-		_, err := c.NewRequest("GET", ".", &T{})
+		_, err := c.NewRequest(context.Background(), "GET", ".", &T{})
 		if err == nil {
 			tc.Error("Expected error")
 		}
 	})
 
 	t.Run("request with an invalid URL", func(tc *testing.T) {
-		_, err := c.NewRequest("GET", ":", nil)
+		_, err := c.NewRequest(context.Background(), "GET", ":", nil)
 		if err == nil {
 			tc.Error("Expected error")
 		}
 	})
 
 	t.Run("request with an invalid Method", func(tc *testing.T) {
-		_, err := c.NewRequest("\n", "/", nil)
+		_, err := c.NewRequest(context.Background(), "\n", "/", nil)
 		if err == nil {
 			tc.Error("Expected error")
 		}
 	})
 
 	t.Run("request with an empty body", func(tc *testing.T) {
-		req, err := c.NewRequest("GET", ".", nil)
+		req, err := c.NewRequest(context.Background(), "GET", ".", nil)
 		if err != nil {
 			tc.Error("Unexpected error")
 		}
@@ -103,7 +105,7 @@ func TestNewRequest(t *testing.T) {
 // the expected result.
 func TestDo(t *testing.T) {
 	t.Run("successful GET request", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		type foo struct{ A string }
@@ -118,8 +120,8 @@ func TestDo(t *testing.T) {
 		want := &foo{"a"}
 		got := new(foo)
 
-		req, _ := client.NewRequest("GET", ".", nil)
-		client.Do(context.Background(), req, got) //nolint:errcheck
+		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
+		client.Do(req, got) //nolint:errcheck,bodyclose
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expecting %v, got %v", want, got)
@@ -127,7 +129,7 @@ func TestDo(t *testing.T) {
 	})
 
 	t.Run("GET request that returns an HTTP error", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -137,8 +139,8 @@ func TestDo(t *testing.T) {
 			w.WriteHeader(http.StatusInternalServerError)
 		})
 
-		req, _ := client.NewRequest("GET", ".", nil)
-		resp, err := client.Do(context.Background(), req, nil)
+		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
+		resp, err := client.Do(req, nil) //nolint:bodyclose
 
 		if resp.StatusCode != http.StatusInternalServerError {
 			t.Errorf("Expecting status code %v, got %v", http.StatusInternalServerError, resp.StatusCode)
@@ -149,7 +151,7 @@ func TestDo(t *testing.T) {
 	})
 
 	t.Run("GET request that receives an empty payload", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		type foo struct{ A string }
@@ -161,9 +163,9 @@ func TestDo(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		req, _ := client.NewRequest("GET", ".", nil)
+		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
 		got := new(foo)
-		resp, err := client.Do(context.Background(), req, got)
+		resp, err := client.Do(req, got) //nolint:bodyclose
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expecting status code %v, got %v", http.StatusOK, resp.StatusCode)
@@ -174,7 +176,7 @@ func TestDo(t *testing.T) {
 	})
 
 	t.Run("GET request that receives an HTML response", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		type foo struct{ A string }
@@ -201,9 +203,9 @@ func TestDo(t *testing.T) {
 			fmt.Fprintln(w, html)
 		})
 
-		req, _ := client.NewRequest("GET", ".", nil)
+		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
 		got := new(foo)
-		resp, err := client.Do(context.Background(), req, got)
+		resp, err := client.Do(req, got) //nolint:bodyclose
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expecting status code %v, got %v", http.StatusOK, resp.StatusCode)
@@ -214,7 +216,7 @@ func TestDo(t *testing.T) {
 	})
 
 	t.Run("GET request on a cancelled context", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -224,10 +226,11 @@ func TestDo(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		})
 
-		req, _ := client.NewRequest("GET", ".", nil)
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		resp, err := client.Do(ctx, req, nil)
+		req, _ := client.NewRequest(ctx, "GET", ".", nil)
+
+		resp, err := client.Do(req, nil) //nolint:bodyclose
 
 		if err == nil {
 			t.Error("Expected error")
@@ -238,7 +241,7 @@ func TestDo(t *testing.T) {
 	})
 
 	t.Run("GET request that returns an error response", func(tc *testing.T) {
-		client, mux, _, teardown := setup()
+		client, mux, teardown := setup()
 		defer teardown()
 
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -252,8 +255,8 @@ func TestDo(t *testing.T) {
 			fmt.Fprintln(w, resp)
 		})
 
-		req, _ := client.NewRequest("GET", ".", nil)
-		resp, err := client.Do(context.Background(), req, nil)
+		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
+		resp, err := client.Do(req, nil) //nolint:bodyclose
 
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("Expecting status code %v, got %v", http.StatusBadRequest, resp.StatusCode)
@@ -267,12 +270,12 @@ func TestDo(t *testing.T) {
 // Setup establishes a test Server that can be used to provide mock responses during testing.
 // It returns a pointer to a client, a mux, the server URL and a teardown function that
 // must be called when testing is complete.
-func setup() (client *Client, mux *http.ServeMux, serverURL string, teardown func()) {
+func setup() (client *Client, mux *http.ServeMux, teardown func()) {
 	mux = http.NewServeMux()
 	server := httptest.NewServer(mux)
 
-	url, _ := url.Parse(server.URL + "/")
-	c := NewClient(url, nil)
+	surl, _ := url.Parse(server.URL + "/")
+	c := NewClient(surl, nil)
 
-	return c, mux, server.URL, server.Close
+	return c, mux, server.Close
 }

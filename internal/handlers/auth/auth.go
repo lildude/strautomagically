@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func authHandler(w http.ResponseWriter, r *http.Request) {
+func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
 		log.Printf("unable to parse form: %s", err)
@@ -21,7 +21,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	cache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -29,7 +29,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authToken := &oauth2.Token{}
-	cache.GetJSON("strava_auth_token", &authToken) //nolint:errcheck
+	che.GetJSON("strava_auth_token", &authToken) //nolint:errcheck
 
 	if state == "" {
 		if authToken.AccessToken == "" {
@@ -37,7 +37,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
-			http.Redirect(w, r, "/", http.StatusFound)
+			http.Redirect(w, r, "/start", http.StatusFound)
 		}
 	} else {
 		if state != stateToken {
@@ -63,19 +63,21 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = cache.SetJSON("strava_auth_token", token)
+		err = che.SetJSON("strava_auth_token", token)
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 		log.Printf("successfully authenticated: %s", athlete["username"])
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, "/start", http.StatusFound)
 
 		// Subscribe to the activity stream - should this be here?
 		err = Subscribe()
 		if err != nil {
 			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
 		}
 	}
 }

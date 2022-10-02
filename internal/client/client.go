@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -37,7 +36,7 @@ func NewClient(baseURL *url.URL, cc *http.Client) *Client {
 
 // NewRequest creates an HTTP Request. If a non-nil body is provided
 // it will be JSON encoded and included in the request.
-func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body interface{}) (*http.Request, error) {
 	u, err := c.BaseURL.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -48,13 +47,13 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 		buf = new(bytes.Buffer)
 		enc := json.NewEncoder(buf)
 		enc.SetEscapeHTML(false)
-		err := enc.Encode(body)
+		err = enc.Encode(body)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -72,21 +71,20 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 // Do sends a request and returns the response. An error is returned if the request cannot
 // be sent or if the API returns an error. If a response is received, the body response body
 // is decoded and stored in the value pointed to by v.
-func (c *Client) Do(ctx context.Context, req *http.Request, v interface{}) (*http.Response, error) {
-	req = req.WithContext(ctx)
+func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 	resp.Body.Close()
 
 	// Anything other than a HTTP 2xx response code is treated as an error.
-	if resp.StatusCode >= 300 {
+	if resp.StatusCode >= 300 { //nolint:gomnd
 		err = errors.New(http.StatusText(resp.StatusCode))
 		return resp, err
 	}

@@ -1,8 +1,8 @@
-package main
+package auth
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -16,12 +16,21 @@ import (
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(ioutil.Discard)
+	log.SetOutput(io.Discard)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
-	oat := `{"access_token":"123456789","token_type":"Bearer","refresh_token":"987654321","expiry":"2022-07-12T18:30:36.917400827Z", "athlete":{"id":1,"username":"test"}}`
+	oat := `{
+		"access_token":"123456789",
+		"token_type":"Bearer",
+		"refresh_token":"987654321",
+		"expiry":"2022-07-12T18:30:36.917400827Z",
+		"athlete":{
+			"id":1,
+			"username":"test"
+			}
+		}`
 
 	httpmock.RegisterResponder("POST", "https://www.strava.com/oauth/token",
 		httpmock.NewStringResponder(200, oat))
@@ -71,12 +80,12 @@ func TestAuthHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", fmt.Sprintf("/auth%s", tc.query), strings.NewReader(tc.body))
+			req, err := http.NewRequest("POST", fmt.Sprintf("/auth%s", tc.query), strings.NewReader(tc.body)) //nolint:noctx
 			if err != nil {
 				t.Fatal(err)
 			}
 			rr := httptest.NewRecorder()
-			handler := http.HandlerFunc(authHandler)
+			handler := http.HandlerFunc(AuthHandler)
 			handler.ServeHTTP(rr, req)
 
 			if status := rr.Code; status != tc.want {

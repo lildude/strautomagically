@@ -1,4 +1,4 @@
-package main
+package callback
 
 import (
 	"encoding/json"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func callbackHandler(w http.ResponseWriter, r *http.Request) {
+func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	challenge, ok := q["hub.challenge"]
 	if !ok {

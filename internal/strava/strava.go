@@ -77,34 +77,38 @@ type updates struct {
 
 func GetActivity(c *client.Client, id int64) (*Activity, error) {
 	var a Activity
-	req, err := c.NewRequest("GET", fmt.Sprintf("/api/v3/activities/%d", id), nil)
+	ctx := context.Background()
+	req, err := c.NewRequest(ctx, "GET", fmt.Sprintf("/api/v3/activities/%d", id), nil)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	_, err = c.Do(context.Background(), req, &a)
+	r, err := c.Do(req, &a)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &a, nil
 }
 
 func UpdateActivity(c *client.Client, id int64, ua *UpdatableActivity) (*Activity, error) {
 	var a Activity
-	req, err := c.NewRequest("PUT", fmt.Sprintf("/api/v3/activities/%d", id), ua)
+	ctx := context.Background()
+	req, err := c.NewRequest(ctx, "PUT", fmt.Sprintf("/api/v3/activities/%d", id), ua)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
 
-	_, err = c.Do(context.Background(), req, &a)
+	r, err := c.Do(req, &a)
 	if err != nil {
 		log.Println(err)
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	return &a, nil
 }
