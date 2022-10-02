@@ -6,7 +6,7 @@ build:
 	go build -o app cmd/strautomagically/main.go
 
 build_azure:
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o app cmd/strautomagically/main.go
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.Version=$(SHA)" -o app cmd/strautomagically/main.go
 
 lint:
 	golangci-lint run --timeout=20m

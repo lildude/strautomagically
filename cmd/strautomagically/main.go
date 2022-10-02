@@ -13,6 +13,8 @@ import (
 	"github.com/lildude/strautomagically/internal/handlers/update"
 )
 
+var Version = "dev"
+
 func main() {
 	port := ":8080"
 	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
@@ -26,6 +28,7 @@ func main() {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Strautomagically-Version", Version)
 	if _, err := w.Write([]byte("Strautomagically")); err != nil {
 		log.Println(err)
 	}
