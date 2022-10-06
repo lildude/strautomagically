@@ -1,11 +1,9 @@
 package update
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +11,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/jarcoal/httpmock"
@@ -122,7 +122,7 @@ func TestUpdateHandler(t *testing.T) {
 	}
 }
 
-func TestConstructUpdate(t *testing.T) { //nolint:funlen
+func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
 	log.SetOutput(io.Discard)
 
@@ -140,13 +140,11 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 	tests := []struct {
 		name    string
 		want    *strava.UpdatableActivity
-		wantLog string
 		fixture string
 	}{
 		{
 			"no changes",
 			&strava.UpdatableActivity{},
-			"nothing to do\n",
 			"no_change.json",
 		},
 		{
@@ -155,7 +153,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				HideFromHome: true,
 				GearID:       "g10043849",
 			},
-			"muted walk\n",
 			"walks.json",
 		},
 		{
@@ -164,7 +161,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				Name:         "Humane Burpees",
 				HideFromHome: true,
 			},
-			"set humane burpees title\n",
 			"humane_burpees.json",
 		},
 		{
@@ -174,7 +170,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				GearID:  "b9880609",
 				Trainer: true,
 			},
-			"prefixed name of ride with TR and set gear to trainer\n",
 			"trainerroad.json",
 		},
 		{
@@ -183,7 +178,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				GearID:  "b9880609",
 				Trainer: true,
 			},
-			"set gear to trainer\n",
 			"zwift.json",
 		},
 		{
@@ -191,7 +185,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				GearID: "b10013574",
 			},
-			"set gear to bike\n",
 			"ride.json",
 		},
 		{
@@ -199,7 +192,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
 			},
-			"set title to Speed Pyramid Row w/ 1.5' Active RI per 250m work\n",
 			"row_speed_pyramid.json",
 		},
 		{
@@ -207,7 +199,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
 			},
-			"set title to Speed Pyramid Row w/ 1.5' Active RI per 250m work\n",
 			"row_speed_pyramid_2.json",
 		},
 		{
@@ -215,7 +206,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "8x 500m w/ 3.5' Active RI Row",
 			},
-			"set title to 8x 500m w/ 3.5' Active RI Row\n",
 			"row_8x500.json",
 		},
 		{
@@ -223,7 +213,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "8x 500m w/ 3.5' Active RI Row",
 			},
-			"set title to 8x 500m w/ 3.5' Active RI Row\n",
 			"row_8x500_2.json",
 		},
 		{
@@ -231,7 +220,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "5x 1500m w/ 5' RI Row",
 			},
-			"set title to 5x 1500m w/ 5' RI Row\n",
 			"row_5x1500.json",
 		},
 		{
@@ -239,7 +227,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "4x 2000m w/5' Active RI Row",
 			},
-			"set title to 4x 2000m w/5' Active RI Row\n",
 			"row_4x2000.json",
 		},
 		{
@@ -247,7 +234,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "4x 2000m w/5' Active RI Row",
 			},
-			"set title to 4x 2000m w/5' Active RI Row\n",
 			"row_4x2000_2.json",
 		},
 		{
@@ -255,7 +241,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "4x 1000m /5' RI Row",
 			},
-			"set title to 4x 1000m /5' RI Row\n",
 			"row_4x1000.json",
 		},
 		{
@@ -263,7 +248,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
 			},
-			"set title to Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row\n",
 			"row_waterfall.json",
 		},
 		{
@@ -271,7 +255,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			&strava.UpdatableActivity{
 				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
 			},
-			"set title to Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row\n",
 			"row_waterfall_2.json",
 		},
 		{
@@ -280,7 +263,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				Name:         "Warm-up Row",
 				HideFromHome: true,
 			},
-			"set title to Warm-up Row\n",
 			"row_warmup.json",
 		},
 		{
@@ -290,7 +272,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				HideFromHome: true,
 				Description:  "Test activity description\n\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n",
 			},
-			"set title to Warm-up Row & added weather\n",
 			"row_add_weather.json",
 		},
 		{
@@ -299,18 +280,12 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 				Name:        "5x 1.5k w/ 5' Active RI",
 				Description: "\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n",
 			},
-			"set title to 5x 1.5k w/ 5' Active RI & added weather\n",
 			"row_title_from_first_line.json",
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Use a faux logger so we can parse the content to find our debug messages to confirm our tests
-			var fauxLog bytes.Buffer
-			log.SetFlags(0)
-			log.SetOutput(&fauxLog)
-
 			var a strava.Activity
 			activity, _ := os.ReadFile("testdata/" + tc.fixture)
 			err := json.Unmarshal(activity, &a)
@@ -321,9 +296,6 @@ func TestConstructUpdate(t *testing.T) { //nolint:funlen
 			got := constructUpdate(rc, &a)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %v, got %v", tc.want, got)
-			}
-			if fauxLog.String() != tc.wantLog {
-				t.Errorf("expected %q, got %q", tc.wantLog, fauxLog.String())
 			}
 		})
 	}
