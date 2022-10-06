@@ -148,6 +148,11 @@ func TestConstructUpdate(t *testing.T) {
 			"no_change.json",
 		},
 		{
+			"unhandled activity type",
+			&strava.UpdatableActivity{},
+			"handcycle.json",
+		},
+		{
 			"set gear and mute walks",
 			&strava.UpdatableActivity{
 				HideFromHome: true,
