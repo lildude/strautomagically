@@ -2,10 +2,11 @@ package callback
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,7 +32,7 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"hub.challenge": challenge[0]}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println(err)
+		log.Errorln(err)
 		return
 	}
 }
