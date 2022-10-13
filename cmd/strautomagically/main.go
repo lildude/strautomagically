@@ -23,7 +23,7 @@ func main() {
 	http.HandleFunc("/start", indexHandler)
 	http.HandleFunc("/auth", auth.AuthHandler)
 	http.HandleFunc("/webhook", webhookHandler)
-	log.Infoln("Starting server on port", port)
+	log.Println("Starting server on port", port)
 	log.Fatal(http.ListenAndServe(port, nil)) //#nosec: G114
 }
 
