@@ -2,10 +2,9 @@ package auth
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/strava"
@@ -15,7 +14,7 @@ import (
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		log.Errorf("unable to parse form: %s\n", err)
+		log.Printf("unable to parse form: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -24,7 +23,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	stateToken := os.Getenv("STATE_TOKEN")
 	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
-		log.Errorf("unable to create redis cache: %s\n", err)
+		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -35,7 +34,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	if state == "" {
 		if authToken.AccessToken == "" {
 			u := strava.OauthConfig.AuthCodeURL(stateToken)
-			log.Debugln("redirecting to", u)
+			log.Println("redirecting to", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
@@ -52,34 +51,35 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		token, err := strava.OauthConfig.Exchange(context.Background(), code)
 		if err != nil {
-			log.Errorln(err)
+			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
 		athlete, ok := token.Extra("athlete").(map[string]interface{})
 		if !ok {
-			log.Errorln("unable to get athete info", err)
+			log.Println("unable to get athete info", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
 		err = che.SetJSON("strava_auth_token", token)
 		if err != nil {
-			log.Errorln(err)
+			log.Println(err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		log.Debugf("successfully authenticated: %s", athlete["username"])
+		log.Printf("successfully authenticated: %s", athlete["username"])
+		http.Redirect(w, r, "/start", http.StatusFound)
 
 		// Subscribe to the activity stream - should this be here?
 		ok, err = Subscribe()
 		if !ok {
-			log.Errorln("failed to subscribe to strava webhook:", err)
+			log.Println("failed to subscribe to strava webhook:", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
-		log.Infoln("successfully subscribed to Strava activity feed")
+		log.Println("successfully subscribed to Strava activity feed")
 
 		http.Redirect(w, r, "/start", http.StatusFound)
 	}

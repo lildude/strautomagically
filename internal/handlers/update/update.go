@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/client"
@@ -29,7 +28,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	body, _ := io.ReadAll(r.Body)
 	if err := json.Unmarshal(body, &webhook); err != nil {
-		log.Errorln("unable to unmarshal webhook payload:", err)
+		log.Println("unable to unmarshal webhook payload:", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -37,13 +36,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	// We only react to new activities for now
 	if webhook.AspectType != "create" {
 		w.WriteHeader(http.StatusOK)
-		log.Infoln("ignoring non-create webhook")
+		log.Println("ignoring non-create webhook")
 		return
 	}
 
 	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
-		log.Errorf("unable to create redis cache: %s", err)
+		log.Printf("unable to create redis cache: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -51,7 +50,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	// See if we've seen this activity before
 	aid, err := rcache.Get("strava_activity")
 	if err != nil {
-		log.Errorf("unable to get activity id from cache: %s", err)
+		log.Printf("unable to get activity id from cache: %s", err)
 	}
 	// Convert aid to int
 	s, _ := aid.(string)
@@ -59,7 +58,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	if aidInt == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
-		log.Infoln("ignoring repeat event")
+		log.Println("ignoring repeat event")
 		return
 	}
 
@@ -68,7 +67,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	authToken := &oauth2.Token{}
 	err = rcache.GetJSON("strava_auth_token", &authToken)
 	if err != nil {
-		log.Errorf("unable to get token: %s", err)
+		log.Printf("unable to get token: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -80,28 +79,28 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	newToken, err := ts.Token()
 	if err != nil {
-		log.Errorf("unable to refresh token: %s", err)
+		log.Printf("unable to refresh token: %s", err)
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken {
 		err = rcache.SetJSON("strava_auth_token", newToken)
 		if err != nil {
-			log.Errorf("unable to store token: %s", err)
+			log.Printf("unable to store token: %s", err)
 			return
 		}
-		log.Infoln("updated token")
+		log.Println("updated token")
 	}
 
 	sc := client.NewClient(surl, tc)
 
 	activity, err := strava.GetActivity(sc, webhook.ObjectID)
 	if err != nil {
-		log.Errorf("unable to get activity: %s", err)
+		log.Printf("unable to get activity: %s", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Debugf("Activity:%s (%d)", activity.Name, activity.ID)
+	log.Printf("Activity:%s (%d)", activity.Name, activity.ID)
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
@@ -111,23 +110,23 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
-			log.Errorf("unable to update activity: %s", err)
+			log.Printf("unable to update activity: %s", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		log.Debugf("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
+		log.Printf("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
 
 		// Cache activity ID if we've succeeded
 		err = rcache.Set("strava_activity", webhook.ObjectID)
 		if err != nil {
-			log.Errorf("unable to cache activity id: %s", err)
+			log.Printf("unable to cache activity id: %s", err)
 		}
 	}
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(`success`)); err != nil {
-		log.Errorln(err)
+		log.Println(err)
 	}
 }
 
@@ -224,7 +223,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		if !strings.Contains(activity.Description, "AQI") {
 			w, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
 			if err != nil {
-				log.Errorf("unable to get weather: %s", err)
+				log.Printf("unable to get weather: %s", err)
 			}
 			if w != "" {
 				if activity.Description != "" && update.Description != "\n" {
@@ -243,7 +242,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		msg = "nothing to do"
 	}
 
-	log.Debugln(msg)
+	log.Println(msg)
 
 	return &update
 }

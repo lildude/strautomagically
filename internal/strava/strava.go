@@ -4,6 +4,7 @@ package strava
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -79,11 +80,13 @@ func GetActivity(c *client.Client, id int64) (*Activity, error) {
 	ctx := context.Background()
 	req, err := c.NewRequest(ctx, "GET", fmt.Sprintf("/api/v3/activities/%d", id), nil)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
 	r, err := c.Do(req, &a)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	defer r.Body.Close()
@@ -96,11 +99,13 @@ func UpdateActivity(c *client.Client, id int64, ua *UpdatableActivity) (*Activit
 	ctx := context.Background()
 	req, err := c.NewRequest(ctx, "PUT", fmt.Sprintf("/api/v3/activities/%d", id), ua)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
 	r, err := c.Do(req, &a)
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	defer r.Body.Close()

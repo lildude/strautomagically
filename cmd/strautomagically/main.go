@@ -1,12 +1,12 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"os"
 
 	// Autoloads .env file to supply environment variables
 	_ "github.com/joho/godotenv/autoload"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/lildude/strautomagically/internal/handlers/auth"
 	"github.com/lildude/strautomagically/internal/handlers/callback"
@@ -30,7 +30,7 @@ func main() {
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Strautomagically-Version", Version)
 	if _, err := w.Write([]byte("Strautomagically")); err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 

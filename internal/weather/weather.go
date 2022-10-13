@@ -4,6 +4,7 @@ package weather
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 	"os"
@@ -116,6 +117,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
 	if err != nil {
+		log.Println(err)
 		return data{}, err
 	}
 
@@ -123,6 +125,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 	w := weatherData{}
 	r, err := c.Do(req, &w)
 	if err != nil {
+		log.Println(err)
 		return data{}, err
 	}
 	defer r.Body.Close()
@@ -140,12 +143,14 @@ func getPollution(c *client.Client, startDate, endDate int64) string {
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
 	if err != nil {
+		log.Println(err)
 		return aqi
 	}
 
 	p := pollution{}
 	r, err := c.Do(req, &p)
 	if err != nil {
+		log.Println(err)
 		return aqi
 	}
 	defer r.Body.Close()

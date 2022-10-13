@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // TODO: Rewrite me as I'm a hacky mess.
@@ -19,17 +18,17 @@ func existingSubscription() bool {
 		os.Getenv("STRAVA_CLIENT_SECRET"))
 	resp, err := http.Get(u) //nolint:gosec,noctx
 	if err != nil {
-		log.Errorf("GET strava /push_subscriptions: %s", err)
+		log.Printf("GET strava /push_subscriptions: %s", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("failed to read push_subscriptions body: %s", err)
+		log.Printf("failed to read push_subscriptions body: %s", err)
 	}
 	var subs []map[string]interface{}
 	if err := json.Unmarshal(body, &subs); err != nil {
-		log.Errorln(err)
+		log.Println(err)
 	}
 	if len(subs) == 0 {
 		return false
@@ -43,7 +42,6 @@ func existingSubscription() bool {
 func Subscribe() (bool, error) {
 	// TODO: Detect if this is our sub and if so, delete it first.
 	if existingSubscription() {
-		log.Infoln("existing subscription found, skipping")
 		return false, nil
 	}
 
