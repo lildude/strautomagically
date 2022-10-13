@@ -3,13 +3,12 @@ package auth
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/jarcoal/httpmock"
