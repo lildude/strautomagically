@@ -36,7 +36,7 @@ func TestAuthHandler(t *testing.T) {
 		httpmock.NewStringResponder(200, oat))
 
 	httpmock.RegisterResponder("GET", "https://www.strava.com/api/v3/push_subscriptions",
-		httpmock.NewStringResponder(200, `{}`))
+		httpmock.NewStringResponder(200, `[{}]`))
 
 	httpmock.RegisterResponder("POST", "https://www.strava.com/api/v3/push_subscriptions",
 		httpmock.NewStringResponder(200, `{"id":1}`))

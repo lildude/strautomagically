@@ -142,7 +142,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 	switch activity.Type {
 	// I'll never handcycle. This is used for testing only
 	case "Handcycle":
-		break
+		return &update
 
 	case "Ride":
 		// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
@@ -195,7 +195,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		}
 
 	case "Run":
-		break
+		return &update
 
 	case "VirtualRide":
 		// Set gear to trainer if activity is a ride and external_id starts with zwift

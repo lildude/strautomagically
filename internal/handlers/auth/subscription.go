@@ -39,9 +39,10 @@ func existingSubscription() bool {
 	return false
 }
 
-func Subscribe() error {
+func Subscribe() (bool, error) {
+	// TODO: Detect if this is our sub and if so, delete it first.
 	if existingSubscription() {
-		return nil
+		return false, nil
 	}
 
 	resp, err := http.PostForm("https://www.strava.com/api/v3/push_subscriptions", url.Values{ //nolint:noctx
@@ -51,22 +52,20 @@ func Subscribe() error {
 		"verify_token":  {os.Getenv("STRAVA_VERIFY_TOKEN")},
 	})
 	if err != nil {
-		log.Printf("POST strava /push_subscriptions: %s", err)
+		return false, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusCreated {
-		log.Printf("successfully subscribed to Strava activity feed")
-		return nil
+		return true, nil
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	_, err = io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("failed to read push_subscriptions body: %s", err)
-		return err
+		return false, err
 	}
-	log.Printf("failed to subscribe to strava webhook: %s: %s", resp.Status, body)
-	return err
+
+	return true, err
 }
 
 // func Unsubscribe() {

@@ -73,11 +73,14 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/start", http.StatusFound)
 
 		// Subscribe to the activity stream - should this be here?
-		err = Subscribe()
-		if err != nil {
-			log.Println(err)
+		ok, err = Subscribe()
+		if !ok {
+			log.Println("failed to subscribe to strava webhook:", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
+		log.Println("successfully subscribed to Strava activity feed")
+
+		http.Redirect(w, r, "/start", http.StatusFound)
 	}
 }
