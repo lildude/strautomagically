@@ -7,7 +7,7 @@
   },
   "logging": {
     "logLevel": {
-      "default": "Trace"
+      "default": "Warning"
     },
     "applicationInsights": {
       "samplingSettings": {
