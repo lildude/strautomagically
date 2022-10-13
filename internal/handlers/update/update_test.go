@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,8 +12,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/jarcoal/httpmock"
