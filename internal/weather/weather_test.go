@@ -110,7 +110,7 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
-	want := "☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n"
+	want := "The Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
 	}
@@ -158,7 +158,7 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
-	want := "☀️ Clear Sky | 🌡 19-23°C | 👌 16°C | 💦 64-94% | 💨 14-3km/h ↓ | AQI 💚\n"
+	want := "The Pain Cave: ☀️ Clear Sky | 🌡 19-23°C | 👌 16°C | 💦 64-94% | AQI 💚\n"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
 	}

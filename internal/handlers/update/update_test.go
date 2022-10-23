@@ -274,7 +274,7 @@ func TestConstructUpdate(t *testing.T) {
 			&strava.UpdatableActivity{
 				Name:         "Warm-up Row",
 				HideFromHome: true,
-				Description:  "Test activity description\n\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n",
+				Description:  "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
 			},
 			"row_add_weather.json",
 		},
@@ -282,7 +282,7 @@ func TestConstructUpdate(t *testing.T) {
 			"set rowing title from first line of description",
 			&strava.UpdatableActivity{
 				Name:        "5x 1.5k w/ 5' Active RI",
-				Description: "\n☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | 💨 14-14km/h ↓ | AQI 💚\n",
+				Description: "\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
 			},
 			"row_title_from_first_line.json",
 		},
