@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -106,7 +107,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	wclient := client.NewClient(baseURL, nil)
 	update := constructUpdate(wclient, activity)
 
-	if (&strava.UpdatableActivity{}) != update {
+	if reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
 		if err != nil {
