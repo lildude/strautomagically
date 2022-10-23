@@ -96,14 +96,15 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (strin
 	// ⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
 
 	// mps -> kph
-	speedFactor := 3.6
-	weather := fmt.Sprintf("%s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
+	// speedFactor := 3.6
+	// weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
+	weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | AQI %s\n",
 		weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
 		int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
 		int(math.Round(sw.FeelsLike)),
 		sw.Humidity, ew.Humidity,
-		int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
-		windDirectionIcon(sw.WindDeg),
+		// int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
+		// windDirectionIcon(sw.WindDeg),
 		aqi)
 
 	return weather, nil
