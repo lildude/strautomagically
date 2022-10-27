@@ -132,10 +132,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) (*strava.UpdatableActivity, string) { //nolint:funlen,gocyclo
+func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *strava.UpdatableActivity, msg string) { //nolint:funlen,gocyclo
 	var update strava.UpdatableActivity
 	var title string
-	var msg string
+	msg = "no activity changes"
 	const trainer = "b9880609" // Tacx Neo 2T Turbo
 	const bike = "b10013574"   // Dolan Tuono Disc
 	const shoes = "g10043849"  // No name, Not running shoes
@@ -144,7 +144,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (*strava
 	switch activity.Type {
 	// I'll never handcycle. This is used for testing only
 	case "Handcycle":
-		return &update, "nothing to do"
+		return &update, msg
 
 	case "Ride":
 		// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
@@ -197,7 +197,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (*strava
 		}
 
 	case "Run":
-		return &update, "nothing to do"
+		return &update, msg
 
 	case "VirtualRide":
 		// Set gear to trainer if activity is a ride and external_id starts with zwift
@@ -230,16 +230,9 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (*strava
 					update.Description = activity.Description + "\n\n"
 				}
 				update.Description += w
-				if msg != "" {
-					msg += " & "
-				}
-				msg += "added weather"
+				msg += " & added weather"
 			}
 		}
-	}
-
-	if msg == "" {
-		msg = "nothing to do"
 	}
 
 	return &update, msg
