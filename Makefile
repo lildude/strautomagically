@@ -12,7 +12,7 @@ lint:
 	golangci-lint run --timeout=20m
 
 test:
-	go test -v ./...
+	ENV=test go test -v ./...
 
 coverage:
 	go test ./... -coverprofile=coverage.out

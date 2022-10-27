@@ -1,6 +1,8 @@
 package logger
 
 import (
+	"io"
+	"os"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -9,6 +11,9 @@ import (
 // NewLogger returns a custom JSON logger
 func NewLogger() logrus.FieldLogger {
 	logger := logrus.New()
+	if os.Getenv("ENV") == "test" {
+		logger.SetOutput(io.Discard)
+	}
 	logger.SetLevel(logrus.InfoLevel)
 	jsonFormatter := logrus.JSONFormatter{
 		TimestampFormat: time.RFC3339Nano,
