@@ -2,15 +2,13 @@ package callback
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/lildude/strautomagically/internal/logger"
 )
 
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
-	log := logger.NewLogger()
 	q := r.URL.Query()
 	challenge, ok := q["hub.challenge"]
 	if !ok {
@@ -33,7 +31,7 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"hub.challenge": challenge[0]}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Error(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 }
