@@ -297,7 +297,7 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got := constructUpdate(rc, &a)
+			got, _ := constructUpdate(rc, &a)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %v, got %v", tc.want, got)
 			}

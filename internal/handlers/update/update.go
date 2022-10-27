@@ -106,7 +106,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
-	update := constructUpdate(wclient, activity)
+	update, msg := constructUpdate(wclient, activity)
 
 	if reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
@@ -117,7 +117,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 			return
 		}
 
-		log.Infof("Updated activity:%s (%d) Hidden: %t", updated.Name, updated.ID, updated.HideFromHome)
+		log.Infof("Updated activity:%s (%d): %s", updated.Name, updated.ID, msg)
 
 		// Cache activity ID if we've succeeded
 		err = rcache.Set("strava_activity", webhook.ObjectID)
@@ -132,7 +132,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.UpdatableActivity { //nolint:funlen,gocyclo
+func constructUpdate(wclient *client.Client, activity *strava.Activity) (*strava.UpdatableActivity, string) { //nolint:funlen,gocyclo
 	var update strava.UpdatableActivity
 	var title string
 	var msg string
@@ -140,13 +140,11 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 	const bike = "b10013574"   // Dolan Tuono Disc
 	const shoes = "g10043849"  // No name, Not running shoes
 
-	log := logger.NewLogger()
-
 	// TODO: Move these to somewhere more configurable
 	switch activity.Type {
 	// I'll never handcycle. This is used for testing only
 	case "Handcycle":
-		return &update
+		return &update, "nothing to do"
 
 	case "Ride":
 		// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
@@ -199,7 +197,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		}
 
 	case "Run":
-		return &update
+		return &update, "nothing to do"
 
 	case "VirtualRide":
 		// Set gear to trainer if activity is a ride and external_id starts with zwift
@@ -225,10 +223,8 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 	// Add weather for activity if no GPS data - assumes we were at home
 	if len(activity.StartLatlng) == 0 {
 		if !strings.Contains(activity.Description, "AQI") {
-			w, err := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
-			if err != nil {
-				log.Error("unable to get weather:", err)
-			}
+			w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+
 			if w != "" {
 				if activity.Description != "" && update.Description != "\n" {
 					update.Description = activity.Description + "\n\n"
@@ -246,7 +242,5 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) *strava.
 		msg = "nothing to do"
 	}
 
-	log.Info(msg)
-
-	return &update
+	return &update, msg
 }
