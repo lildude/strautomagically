@@ -4,31 +4,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/lildude/strautomagically/internal/logger"
 )
 
 // TODO: Rewrite me as I'm a hacky mess.
 func existingSubscription() bool {
+	log := logger.NewLogger()
 	u := fmt.Sprintf("%s/push_subscriptions?client_id=%s&client_secret=%s",
 		"https://www.strava.com/api/v3",
 		os.Getenv("STRAVA_CLIENT_ID"),
 		os.Getenv("STRAVA_CLIENT_SECRET"))
 	resp, err := http.Get(u) //nolint:gosec,noctx
 	if err != nil {
-		log.Printf("GET strava /push_subscriptions: %s", err)
+		log.Info("GET strava /push_subscriptions:", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("failed to read push_subscriptions body: %s", err)
+		log.Error("failed to read push_subscriptions body:", err)
 	}
 	var subs []map[string]interface{}
 	if err := json.Unmarshal(body, &subs); err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 	if len(subs) == 0 {
 		return false
