@@ -13,7 +13,7 @@ jobs:
     name: Test & build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
@@ -38,7 +38,7 @@ jobs:
 
     - name: Upload
       if: github.ref == 'refs/heads/main'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: app
         path: ./app
@@ -49,9 +49,9 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Download
-      uses: actions/download-artifact@v2
+      uses: actions/download-artifact@v3
       with:
         name: app
 
