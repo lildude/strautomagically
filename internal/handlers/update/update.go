@@ -221,7 +221,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		}
 	}
 
-	// Add weather for activity if no GPS data - assumes we were at home
+	// Add weather for activity if no GPS data - assumes we were in the pain cave
 	if len(activity.StartLatlng) == 0 {
 		if !strings.Contains(activity.Description, "AQI") {
 			w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
