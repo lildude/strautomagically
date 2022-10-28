@@ -146,9 +146,11 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		return &update, msg
 
 	case "Ride":
-		// Prefix name of rides with TR if external_id starts with traineroad and set gear to trainer
+		// Prefix name of rides with TR if external_id starts with trainerroad and set gear to trainer
 		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
-			update.Name = "TR: " + activity.Name
+			if !strings.HasPrefix(activity.Name, "TR: ") {
+				update.Name = "TR: " + activity.Name
+			}
 			update.GearID = trainer
 			update.Trainer = true
 			msg = "prefixed name of ride with TR and set gear to trainer"
