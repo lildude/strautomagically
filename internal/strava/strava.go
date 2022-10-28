@@ -27,50 +27,50 @@ var (
 
 // Activity struct holds only the data we want from the Strava API for an activity.
 type Activity struct {
+	Commute        bool      `json:"commute"`
+	Description    string    `json:"description"`
+	Distance       float64   `json:"distance"`
+	ElapsedTime    int64     `json:"elapsed_time"`
+	EndLatlng      []float64 `json:"end_latlng"`
+	ExternalID     string    `json:"external_id"`
+	GearID         string    `json:"gear_id"`
+	HideFromHome   bool      `json:"hide_from_home"`
 	ID             int64     `json:"id"`
 	Name           string    `json:"name"`
-	Distance       float64   `json:"distance"`
-	Type           string    `json:"type"`
+	Private        bool      `json:"private"`
 	StartDate      time.Time `json:"start_date"`
 	StartDateLocal time.Time `json:"start_date_local"`
-	ElapsedTime    int64     `json:"elapsed_time"`
-	ExternalID     string    `json:"external_id"`
 	StartLatlng    []float64 `json:"start_latlng"`
-	EndLatlng      []float64 `json:"end_latlng"`
 	Trainer        bool      `json:"trainer"`
-	Commute        bool      `json:"commute"`
-	Private        bool      `json:"private"`
+	Type           string    `json:"type"`
 	WorkoutType    int       `json:"workout_type"`
-	HideFromHome   bool      `json:"hide_from_home"`
-	GearID         string    `json:"gear_id"`
-	Description    string    `json:"description"`
 }
 
 type UpdatableActivity struct {
-	Commute      bool   `json:"commute"`
-	Trainer      bool   `json:"trainer"`
-	HideFromHome bool   `json:"hide_from_home"`
-	Description  string `json:"description"`
-	Name         string `json:"name"`
-	Type         string `json:"type"`
-	GearID       string `json:"gear_id"`
+	Commute      bool   `json:"commute,omitempty"`
+	Description  string `json:"description,omitempty"`
+	GearID       string `json:"gear_id,omitempty"`
+	HideFromHome bool   `json:"hide_from_home,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Trainer      bool   `json:"trainer,omitempty"`
+	Type         string `json:"type,omitempty"`
 }
 
 type WebhookPayload struct {
-	SubscriptionID int64   `json:"subscription_id"`
-	OwnerID        int64   `json:"owner_id"`
-	ObjectID       int64   `json:"object_id"`
-	ObjectType     string  `json:"object_type"`
 	AspectType     string  `json:"aspect_type"`
 	EventTime      int64   `json:"event_time"`
+	ObjectID       int64   `json:"object_id"`
+	ObjectType     string  `json:"object_type"`
+	OwnerID        int64   `json:"owner_id"`
+	SubscriptionID int64   `json:"subscription_id"`
 	Updates        updates `json:"updates"`
 }
 
 type updates struct {
+	Authorized string `json:"authorized,omitempty"`
+	Private    string `json:"private,omitempty"`
 	Title      string `json:"title,omitempty"`
 	Type       string `json:"type,omitempty"`
-	Private    string `json:"private,omitempty"`
-	Authorized string `json:"authorized,omitempty"`
 }
 
 func GetActivity(c *client.Client, id int64) (*Activity, error) {
