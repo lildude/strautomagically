@@ -57,7 +57,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	s, _ := aid.(string)
 	aidInt, _ := strconv.ParseInt(s, 10, 64)
 
-	if aidInt == webhook.ObjectID {
+	if os.Getenv("ENV") != "dev" && aidInt == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
 		log.Println("[INFO] ignoring repeat event")
 		return

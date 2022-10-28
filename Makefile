@@ -19,7 +19,7 @@ coverage:
 	go tool cover -func coverage.out
 
 start: build
-	func start --custom
+	ENV=dev func start --custom
 
 get-auth-token:
 	echo GET strava_auth_token | redis-cli -u ${REDIS_URL}
