@@ -107,7 +107,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	wclient := client.NewClient(baseURL, nil)
 	update, msg := constructUpdate(wclient, activity) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 
-	if reflect.DeepEqual(update, strava.UpdatableActivity{}) {
+	if !reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 		if err != nil {
