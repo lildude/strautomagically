@@ -8,7 +8,7 @@ import (
 )
 
 func TestSubscribe(t *testing.T) {
-	os.Setenv("STRAVA_CALLBACK_URI", "https://example.com/webhook")
+	t.Setenv("STRAVA_CALLBACK_URI", "https://example.com/webhook")
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
@@ -47,7 +47,7 @@ func TestSubscribe(t *testing.T) {
 }
 
 func TestExistingSubscription(t *testing.T) {
-	os.Setenv("STRAVA_CALLBACK_URI", "https://example.com/webhook")
+	t.Setenv("STRAVA_CALLBACK_URI", "https://example.com/webhook")
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 

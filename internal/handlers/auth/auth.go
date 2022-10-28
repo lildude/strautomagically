@@ -1,7 +1,7 @@
+// Package auth implements the authentication handler.
 package auth
 
 import (
-	"context"
 	"log"
 	"net/http"
 	"os"
@@ -21,7 +21,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 	if err != nil {
 		log.Println("[ERROR] unable to create redis cache:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -29,7 +29,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authToken := &oauth2.Token{}
-	che.GetJSON("strava_auth_token", &authToken) //nolint:errcheck
+	che.GetJSON("strava_auth_token", &authToken) //nolint:gosec // We don't care if this fails
 
 	if state == "" {
 		if authToken.AccessToken == "" {
@@ -39,48 +39,48 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
 		}
-	} else {
-		if state != stateToken {
-			http.Error(w, "state invalid", http.StatusBadRequest)
-			return
-		}
-		code := r.Form.Get("code")
-		if code == "" {
-			http.Error(w, "code not found", http.StatusBadRequest)
-			return
-		}
-		token, err := strava.OauthConfig.Exchange(context.Background(), code)
-		if err != nil {
-			log.Println("[ERROR]", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
-		athlete, ok := token.Extra("athlete").(map[string]interface{})
-		if !ok {
-			log.Println("[ERROR] unable to get athete info", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-
-		err = che.SetJSON("strava_auth_token", token)
-		if err != nil {
-			log.Println("[ERROR]", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		log.Println("[INFO] successfully authenticated:", athlete["username"])
-		http.Redirect(w, r, "/start", http.StatusFound)
-
-		// Subscribe to the activity stream - should this be here?
-		ok, err = Subscribe()
-		if !ok {
-			log.Println("[ERROR] failed to subscribe to strava webhook:", err)
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
-		log.Println("[INFO] successfully subscribed to Strava activity feed")
-
-		http.Redirect(w, r, "/start", http.StatusFound)
 	}
+
+	if state != stateToken {
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	code := r.Form.Get("code")
+	if code == "" {
+		http.Error(w, "code not found", http.StatusBadRequest)
+		return
+	}
+	token, err := strava.OauthConfig.Exchange(r.Context(), code)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	athlete, ok := token.Extra("athlete").(map[string]interface{})
+	if !ok {
+		log.Println("[ERROR] unable to get athete info", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	err = che.SetJSON("strava_auth_token", token)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	log.Println("[INFO] successfully authenticated:", athlete["username"])
+	http.Redirect(w, r, "/start", http.StatusFound)
+
+	// Subscribe to the activity stream - should this be here?
+	ok, err = Subscribe()
+	if !ok {
+		log.Println("[ERROR] failed to subscribe to strava webhook:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	log.Println("[INFO] successfully subscribed to Strava activity feed")
+
+	http.Redirect(w, r, "/start", http.StatusFound)
 }

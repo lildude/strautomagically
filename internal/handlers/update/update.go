@@ -1,7 +1,7 @@
+// Package update implements the update handler for Strava activities.
 package update
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +20,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
+func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var webhook strava.WebhookPayload
 	if r.Body == nil {
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
@@ -41,7 +41,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 		return
 	}
 
-	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL"))
+	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 	if err != nil {
 		log.Println("[ERROR] unable to create redis cache:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -64,7 +64,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 
 	// Create the OAuth http.Client
-	ctx := context.Background()
+	// ctx := context.Background()
 	authToken := &oauth2.Token{}
 	err = rcache.GetJSON("strava_auth_token", &authToken)
 	if err != nil {
@@ -74,8 +74,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 
 	// The Oauth2 library handles refreshing the token if it's expired.
-	ts := strava.OauthConfig.TokenSource(context.Background(), authToken)
-	tc := oauth2.NewClient(ctx, ts)
+	ts := strava.OauthConfig.TokenSource(r.Context(), authToken)
+	tc := oauth2.NewClient(r.Context(), ts)
 	surl, _ := url.Parse(strava.BaseURL)
 
 	newToken, err := ts.Token()
@@ -94,7 +94,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	sc := client.NewClient(surl, tc)
 
-	activity, err := strava.GetActivity(sc, webhook.ObjectID)
+	activity, err := strava.GetActivity(sc, webhook.ObjectID) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 	if err != nil {
 		log.Println("[ERROR] unable to get activity:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -105,11 +105,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
-	update, msg := constructUpdate(wclient, activity)
+	update, msg := constructUpdate(wclient, activity) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 
 	if reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
-		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update)
+		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 		if err != nil {
 			log.Println("[ERROR] unable to update activity:", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -131,7 +131,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) { //nolint:funlen
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *strava.UpdatableActivity, msg string) { //nolint:funlen,gocyclo
+func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"

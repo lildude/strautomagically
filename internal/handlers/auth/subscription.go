@@ -16,7 +16,7 @@ func existingSubscription() bool {
 		"https://www.strava.com/api/v3",
 		os.Getenv("STRAVA_CLIENT_ID"),
 		os.Getenv("STRAVA_CLIENT_SECRET"))
-	resp, err := http.Get(u) //nolint:gosec,noctx
+	resp, err := http.Get(u) //nolint:gosec,noctx // TODO: Fix this.
 	if err != nil {
 		log.Println("[INFO] GET strava /push_subscriptions:", err)
 	}
@@ -45,7 +45,7 @@ func Subscribe() (bool, error) {
 		return false, nil
 	}
 
-	resp, err := http.PostForm("https://www.strava.com/api/v3/push_subscriptions", url.Values{ //nolint:noctx
+	resp, err := http.PostForm("https://www.strava.com/api/v3/push_subscriptions", url.Values{ //nolint:noctx // TODO: Fix this.
 		"client_id":     {os.Getenv("STRAVA_CLIENT_ID")},
 		"client_secret": {os.Getenv("STRAVA_CLIENT_SECRET")},
 		"callback_url":  {os.Getenv("STRAVA_CALLBACK_URI")},

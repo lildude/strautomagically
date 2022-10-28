@@ -25,7 +25,7 @@ func TestGetActivity(t *testing.T) {
 	})
 
 	want := &Activity{}
-	json.Unmarshal(resp, want) //nolint:errcheck
+	json.Unmarshal(resp, want)
 
 	got, err := GetActivity(rc, 12345678987654321)
 	if err != nil {
@@ -63,7 +63,7 @@ func TestUpdateActivity(t *testing.T) {
 	})
 
 	want := &Activity{}
-	json.Unmarshal(resp, want) //nolint:errcheck
+	json.Unmarshal(resp, want)
 
 	update := &UpdatableActivity{
 		Name:         "Test Activity - Updated",

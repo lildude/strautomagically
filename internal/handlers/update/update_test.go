@@ -99,13 +99,13 @@ func TestUpdateHandler(t *testing.T) {
 			// Pre-populate Redis with the expected values, if set, and set REDIS_URL to use the miniredis instance
 			if tc.redis[0] != "" {
 				os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
-				r.Set("strava_auth_token", tc.redis[0]) //nolint:errcheck
-				r.Set("strava_activity", tc.redis[1])   //nolint:errcheck
+				r.Set("strava_auth_token", tc.redis[0])
+				r.Set("strava_activity", tc.redis[1])
 			} else {
 				os.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
 			}
 
-			req, err := http.NewRequest("GET", "/webhook", strings.NewReader(tc.webhookBody)) //nolint:noctx
+			req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(tc.webhookBody))
 			if err != nil {
 				t.Fatal(err)
 			}

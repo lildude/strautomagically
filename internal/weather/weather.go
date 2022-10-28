@@ -1,4 +1,4 @@
-// The weather package implements methods to gather weather and AQI from OpenWeatherMap and present it in a pretty string.
+// Package weather implements methods to gather weather and AQI from OpenWeatherMap and present it in a pretty string.
 package weather
 
 import (
@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-// weather struct holds just the data we need from the OpenWeatherMap API
+// weatherData struct holds just the data we need from the OpenWeatherMap API.
 type weatherData struct {
 	Data []data `json:"data"`
 }
@@ -35,7 +35,7 @@ type weather struct {
 	Description string `json:"description"`
 }
 
-// pollution struct holds just the data we need from the OpenWeatherMap API
+// pollution struct holds just the data we need from the OpenWeatherMap API.
 type pollution struct {
 	List []struct {
 		Main struct {
@@ -44,7 +44,7 @@ type pollution struct {
 	} `json:"list"`
 }
 
-// GetWeather returns the weather conditions in a pretty string
+// GetWeatherLine returns the weather conditions in a pretty string.
 func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (string, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
@@ -109,7 +109,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (strin
 	return weather, nil
 }
 
-// getWeather returns the weather conditions for the given time
+// getWeather returns the weather conditions for the given time.
 func getWeather(c *client.Client, dt int64) (data, error) {
 	params := defaultParams()
 	params.Add("dt", fmt.Sprintf("%d", dt))
@@ -131,7 +131,7 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 	return w.Data[0], nil
 }
 
-// getPollution returns the AQI icon for the given period
+// getPollution returns the AQI icon for the given period.
 func getPollution(c *client.Client, startDate, endDate int64) string {
 	aqi := "?"
 	params := defaultParams()
@@ -166,7 +166,7 @@ func getPollution(c *client.Client, startDate, endDate int64) string {
 	return aqi
 }
 
-// defaultParams returns a url.Values object with the default parameters used for all queries
+// defaultParams returns a url.Values object with the default parameters used for all queries.
 func defaultParams() url.Values {
 	params := url.Values{}
 	params.Add("lat", os.Getenv("OWM_LAT"))

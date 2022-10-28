@@ -1,8 +1,10 @@
+// Package cache implements a REDIS cache.
 package cache
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	redis "github.com/go-redis/redis/v8"
 )
@@ -10,7 +12,7 @@ import (
 type Cache interface {
 	Get(key string) (interface{}, error)
 	Set(key string, value interface{}) error
-	GetJSON(key string, v interface{}) error
+	GetJSON(key string, value interface{}) error
 	SetJSON(key string, value interface{}) error
 }
 
@@ -46,7 +48,7 @@ func (rc *RedisCache) Set(key string, value interface{}) error {
 // Get retrieves a value from the cache.
 func (rc *RedisCache) Get(key string) (interface{}, error) {
 	value, err := rc.conn.Get(rc.ctx, key).Result()
-	if err == nil || err == redis.Nil {
+	if err == nil || errors.Is(err, redis.Nil) {
 		return value, nil
 	}
 
@@ -60,7 +62,7 @@ func (rc *RedisCache) GetJSON(key string, value interface{}) error {
 		return err
 	}
 
-	if err := json.Unmarshal([]byte(v.(string)), &value); err != nil {
+	if err := json.Unmarshal([]byte(v.(string)), &value); err != nil { //nolint:forcetypeassert // Not sure about this yet
 		return err
 	}
 	return nil

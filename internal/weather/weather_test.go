@@ -23,9 +23,9 @@ func TestGetWeather(t *testing.T) {
 	latIn := "51.509865"
 	lonIn := "-0.118092"
 	appIDIn := "123456789"
-	os.Setenv("OWM_LAT", latIn)
-	os.Setenv("OWM_LON", lonIn)
-	os.Setenv("OWM_API_KEY", appIDIn)
+	t.Setenv("OWM_LAT", latIn)
+	t.Setenv("OWM_LON", lonIn)
+	t.Setenv("OWM_API_KEY", appIDIn)
 	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC).Unix()
 	startOut := strconv.FormatInt(startIn, 10)
 

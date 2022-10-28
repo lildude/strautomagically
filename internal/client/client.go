@@ -81,10 +81,10 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp.Body.Close()
+	resp.Body.Close() //nolint:gosec // I dont' care if this fails
 
 	// Anything other than a HTTP 2xx response code is treated as an error.
-	if resp.StatusCode >= 300 { //nolint:gomnd
+	if resp.StatusCode >= http.StatusMultipleChoices {
 		err = errors.New(http.StatusText(resp.StatusCode))
 		return resp, err
 	}
@@ -92,11 +92,8 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	if v != nil && len(data) != 0 {
 		err = json.Unmarshal(data, v)
 
-		switch err {
-		case nil:
-		case io.EOF:
+		if err == nil || errors.Is(err, io.EOF) {
 			err = nil
-		default:
 		}
 	}
 

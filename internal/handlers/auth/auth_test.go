@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -43,8 +42,8 @@ func TestAuthHandler(t *testing.T) {
 
 	r := miniredis.RunT(t)
 	defer r.Close()
-	os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
-	os.Setenv("STATE_TOKEN", "test-state-token")
+	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("STATE_TOKEN", "test-state-token")
 
 	tests := []struct {
 		name  string
@@ -80,7 +79,7 @@ func TestAuthHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest("POST", fmt.Sprintf("/auth%s", tc.query), strings.NewReader(tc.body)) //nolint:noctx
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/auth%s", tc.query), strings.NewReader(tc.body))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,7 +4,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 )
 
@@ -38,7 +37,7 @@ func TestCallbackHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
+			t.Setenv("STRAVA_VERIFY_TOKEN", "mytoken")
 			req := httptest.NewRequest(http.MethodGet, "/?"+tt.queryParams, nil)
 			w := httptest.NewRecorder()
 			CallbackHandler(w, req)

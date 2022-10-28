@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	// Autoloads .env file to supply environment variables
+	// Autoloads .env file to supply environment variables.
 	_ "github.com/joho/godotenv/autoload"
 
 	"github.com/lildude/strautomagically/internal/handlers/auth"
@@ -37,10 +37,10 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "GET" {
+	if r.Method == http.MethodGet {
 		callback.CallbackHandler(w, r)
 	}
-	if r.Method == "POST" {
+	if r.Method == http.MethodPost {
 		update.UpdateHandler(w, r)
 	}
 }

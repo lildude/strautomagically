@@ -1,4 +1,4 @@
-// The Strava package implements methods to update Strava entries in response to receiving webhook events.
+// Package strava implements methods to update Strava entries in response to receiving webhook events.
 package strava
 
 import (
@@ -25,7 +25,7 @@ var (
 	}
 )
 
-// activity struct holds only the data we want from the Strava API for an activity
+// Activity struct holds only the data we want from the Strava API for an activity.
 type Activity struct {
 	ID             int64     `json:"id"`
 	Name           string    `json:"name"`
@@ -56,7 +56,6 @@ type UpdatableActivity struct {
 	GearID       string `json:"gear_id"`
 }
 
-// https://developers.strava.com/docs/webhooks/#event-data
 type WebhookPayload struct {
 	SubscriptionID int64   `json:"subscription_id"`
 	OwnerID        int64   `json:"owner_id"`
