@@ -44,8 +44,26 @@ type pollution struct {
 	} `json:"list"`
 }
 
-// GetWeatherLine returns the weather conditions in a pretty string.
-func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (string, error) {
+type WeatherInfo struct {
+	StartIcon      string
+	EndIcon        string
+	StartDesc      string
+	EndDesc        string
+	StartTemp      int
+	EndTemp        int
+	StartFeelsLike int
+	EndFeelsLike   int
+	StartHumidity  int64
+	EndHumidity    int64
+	StartWindSpeed int
+	EndWindSpeed   int
+	StartWindDir   string
+	EndWindDir     string
+	Aqi            string
+}
+
+// GetWeatherLine returns the weather conditions in a struct for passing to the templating.
+func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*WeatherInfo, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
 	ets := endDate.Unix()
@@ -53,7 +71,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (strin
 	// Get weather at start of activity
 	sw, err := getWeather(c, sts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Get weather at end of activity
@@ -71,7 +89,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (strin
 
 	// Return early if we don't have any data
 	if sw.Weather[0].Description == "" || ew.Weather[0].Description == "" {
-		return "", err
+		return nil, err
 	}
 
 	weatherIcon := map[string]string{
@@ -95,18 +113,36 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (strin
 	// ⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
 
 	// mps -> kph
-	// speedFactor := 3.6
+	speedFactor := 3.6
 	// weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
-	weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | AQI %s\n",
-		weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
-		int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
-		int(math.Round(sw.FeelsLike)),
-		sw.Humidity, ew.Humidity,
-		// int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
-		// windDirectionIcon(sw.WindDeg),
-		aqi)
+	// weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | AQI %s\n",
+	// 	weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
+	// 	int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
+	// 	int(math.Round(sw.FeelsLike)),
+	// 	sw.Humidity, ew.Humidity,
+	// 	// int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
+	// 	// windDirectionIcon(sw.WindDeg),
+	// 	aqi)
 
-	return weather, nil
+	wi := WeatherInfo{
+		StartIcon:      weatherIcon[icon],
+		EndIcon:        weatherIcon[icon],
+		StartDesc:      cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
+		EndDesc:        cases.Title(language.BritishEnglish).String(ew.Weather[0].Description),
+		StartTemp:      int(math.Round(sw.Temp)),
+		EndTemp:        int(math.Round(ew.Temp)),
+		StartFeelsLike: int(math.Round(sw.FeelsLike)),
+		EndFeelsLike:   int(math.Round(ew.FeelsLike)),
+		StartHumidity:  sw.Humidity,
+		EndHumidity:    ew.Humidity,
+		StartWindSpeed: int(math.Round(sw.WindSpeed) * speedFactor),
+		EndWindSpeed:   int(math.Round(ew.WindSpeed) * speedFactor),
+		StartWindDir:   windDirectionIcon(sw.WindDeg),
+		EndWindDir:     windDirectionIcon(ew.WindDeg),
+		Aqi:            aqi,
+	}
+
+	return &wi, nil
 }
 
 // getWeather returns the weather conditions for the given time.
