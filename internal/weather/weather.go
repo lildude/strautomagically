@@ -109,20 +109,8 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 
 	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
-	// TODO: make me templatable
-	// ⛅ Partly Cloudy | 🌡 18–19°C | 👌 19°C | 💦 58–55% | 💨 16–15km/h ↙ | AQI 💚
-
 	// mps -> kph
 	speedFactor := 3.6
-	// weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | 💨 %d-%dkm/h %s | AQI %s\n",
-	// weather := fmt.Sprintf("The Pain Cave: %s %s | 🌡 %d-%d°C | 👌 %d°C | 💦 %d-%d%% | AQI %s\n",
-	// 	weatherIcon[icon], cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
-	// 	int(math.Round(sw.Temp)), int(math.Round(ew.Temp)),
-	// 	int(math.Round(sw.FeelsLike)),
-	// 	sw.Humidity, ew.Humidity,
-	// 	// int(math.Round(sw.WindSpeed)*speedFactor), int(math.Round(ew.WindSpeed)*speedFactor),
-	// 	// windDirectionIcon(sw.WindDeg),
-	// 	aqi)
 
 	wi := WeatherInfo{
 		StartIcon:      weatherIcon[icon],
