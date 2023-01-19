@@ -32,6 +32,3 @@ reset-last-activity:
 
 reset-auth-token:
 	echo DEL strava_auth_token | redis-cli -u ${REDIS_URL}
-
-last-uid:
-	echo GET starling_webhookevent_uid | redis-cli -u ${REDIS_URL}

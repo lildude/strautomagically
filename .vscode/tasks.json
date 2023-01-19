@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "type": "shell",
+  "cwd": "${workspaceFolder}",
+  "tasks": [
+    {
+      "label": "run all tests",
+      "command": "go",
+      "args": [
+        "test",
+        "-v",
+        "./..."
+      ],
+      "group": "build"
+    },
+    {
+      "label": "run tests in file",
+      "command": "go",
+      "args": [
+        "test",
+        "-v",
+        "${file}"
+      ],
+      "group": "build"
+    },
+    {
+      "type": "func",
+      "command": "host start",
+      "problemMatcher": "$func-watch",
+      "isBackground": true
+    }
+  ],
+}
