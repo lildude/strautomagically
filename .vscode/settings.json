@@ -1,0 +1,9 @@
+{
+  "go.testEnvVars": {
+    "APP_ENV": "test",
+  },
+  "azureFunctions.deploySubpath": ".",
+  "azureFunctions.projectLanguage": "Custom",
+  "azureFunctions.projectRuntime": "~4",
+  "debug.internalConsoleOptions": "neverOpen",
+}
