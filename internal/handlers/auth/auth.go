@@ -39,6 +39,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
 		}
+		return
 	}
 
 	if state != stateToken {
