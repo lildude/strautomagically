@@ -2,6 +2,7 @@
 package update
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,9 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/client"
@@ -106,6 +109,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	update, msg := constructUpdate(wclient, activity) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+
+	// Don't update the activity if DEBUG=1
+	if os.Getenv("DEBUG") == "1" {
+		log.Println("[DEBUG] update:", update)
+		log.Println("[DEBUG] message:", msg)
+		return
+	}
 
 	if !reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
@@ -221,20 +231,45 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		}
 	}
 
-	// Add weather for activity if no GPS data - assumes we were in the pain cave
-	if len(activity.StartLatlng) == 0 {
-		if !strings.Contains(activity.Description, "AQI") {
-			w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+	// Add weather for activity if no GPS data or it's already there - assumes we were in the pain cave
+	if len(activity.StartLatlng) != 0 || strings.Contains(activity.Description, "AQI") {
+		return &update, msg
+	}
 
-			if w != "" {
-				if activity.Description != "" && update.Description != "\n" {
-					update.Description = activity.Description + "\n\n"
-				}
-				update.Description += w
-				msg += " & added weather"
-			}
+	w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+	if w != nil {
+		wtr, err := execTemplate("weather.tmpl", w)
+		if err != nil {
+			log.Println("[ERROR] unable to parse weather template:", err)
 		}
+
+		if activity.Description != "" && update.Description != "\n" {
+			update.Description = activity.Description + "\n\n"
+		}
+		update.Description += wtr
+		msg += " & added weather"
 	}
 
 	return &update, msg
+}
+
+func execTemplate(tmpl string, data interface{}) (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+	templatePath := filepath.Join(wd, "..", "..", "..", "templates", tmpl)
+
+	t, err := template.ParseFiles(templatePath)
+	if err != nil {
+		return "", err
+	}
+
+	var tpl bytes.Buffer
+	err = t.Execute(&tpl, data)
+	if err != nil {
+		return "", err
+	}
+
+	return tpl.String(), nil
 }
