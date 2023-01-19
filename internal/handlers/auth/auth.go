@@ -71,7 +71,6 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("[INFO] successfully authenticated:", athlete["username"])
-	http.Redirect(w, r, "/start", http.StatusFound)
 
 	// Subscribe to the activity stream - should this be here?
 	ok, err = Subscribe()
