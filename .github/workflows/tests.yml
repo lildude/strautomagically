@@ -42,8 +42,8 @@ jobs:
       with:
         name: app
         path: |
-          ./strautomagically
-          ./templates/weather.tmpl
+          strautomagically
+          templates/weather.tmpl
 
   deploy:
     name: Deploy
@@ -56,7 +56,6 @@ jobs:
       uses: actions/download-artifact@v3
       with:
         name: app
-    - run: mv app/* . && rmdir app
 
     - name: Login to Azure
       uses: azure/login@v1
