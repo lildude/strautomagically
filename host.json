@@ -23,7 +23,7 @@
   "customHandler": {
     "enableForwardingHttpRequest": true,
     "description": {
-      "defaultExecutablePath": "app",
+      "defaultExecutablePath": "strautomagically",
       "workingDirectory": "",
       "arguments": []
     }
