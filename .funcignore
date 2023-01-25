@@ -12,5 +12,5 @@ LICENSE
 Procfile
 *.md
 Makefile
-.golangci.yml
+.golangci.toml
 cmd/
