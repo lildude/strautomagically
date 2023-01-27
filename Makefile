@@ -15,7 +15,7 @@ test:
 	ENV=test go test -v ./...
 
 coverage:
-	go test ./... -coverprofile=coverage.out
+	ENV=test go test ./... -coverprofile=coverage.out
 	go tool cover -func coverage.out
 
 start: build
