@@ -258,7 +258,12 @@ func execTemplate(tmpl string, data interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	templatePath := filepath.Join(wd, "..", "..", "..", "templates", tmpl)
+
+	// Test and dev/prod use different paths
+	templatePath := filepath.Join(wd, "templates", tmpl)
+	if os.Getenv("ENV") == "test" {
+		templatePath = filepath.Join(wd, "..", "..", "..", "templates", tmpl)
+	}
 
 	t, err := template.ParseFiles(templatePath)
 	if err != nil {
