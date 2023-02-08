@@ -175,14 +175,14 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		// Workouts created in ErgZone will have the name in the first line of the description
 		lines := strings.Split(activity.Description, "\n")
 		if len(lines) > 0 {
-			// We only want the first line if the description contains the https://erg.zone URL
-			if strings.Contains(activity.Description, "https://erg.zone") {
+			// We only want the first line if the description contains the app.erg.zone URL
+			if strings.Contains(activity.Description, "app.erg.zone") {
 				title = lines[0]
 				update.Description = "\n"
 			}
 		}
 
-		// Fallback to the name if there is no description or it doesn't contain "https://erg.zone"
+		// Fallback to the name if there is no description or it doesn't contain "app.erg.zone"
 		if title == "" {
 			switch activity.Name {
 			case "v250m/1:30r...7 row", "v5:00/1:00r...15 row":
