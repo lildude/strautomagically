@@ -1,6 +1,6 @@
 {
   "go.testEnvVars": {
-    "APP_ENV": "test",
+    "ENV": "test",
   },
   "azureFunctions.deploySubpath": ".",
   "azureFunctions.projectLanguage": "Custom",
