@@ -17,10 +17,14 @@ import (
 
 // weatherData struct holds just the data we need from the OpenWeatherMap API.
 type weatherData struct {
-	Data []data `json:"data"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+	Data []data  `json:"data"`
 }
 
 type data struct {
+	Lat       float64   `json:"lat"`
+	Lon       float64   `json:"lon"`
 	Temp      float64   `json:"temp"`
 	FeelsLike float64   `json:"feels_like"`
 	Humidity  int64     `json:"humidity"`
@@ -44,22 +48,30 @@ type pollution struct {
 	} `json:"list"`
 }
 
+type QueryParams struct {
+	Lat   float64
+	Lon   float64
+	Lang  string
+	Units string
+	AppID string
+}
+
+type periodWeatherInfo struct {
+	Icon      string
+	Desc      string
+	Temp      int
+	FeelsLike int
+	Humidity  int64
+	WindSpeed int
+	WindDir   string
+	Lat       float64
+	Lon       float64
+}
+
 type WeatherInfo struct {
-	StartIcon      string
-	EndIcon        string
-	StartDesc      string
-	EndDesc        string
-	StartTemp      int
-	EndTemp        int
-	StartFeelsLike int
-	EndFeelsLike   int
-	StartHumidity  int64
-	EndHumidity    int64
-	StartWindSpeed int
-	EndWindSpeed   int
-	StartWindDir   string
-	EndWindDir     string
-	Aqi            string
+	Start periodWeatherInfo
+	End   periodWeatherInfo
+	Aqi   string
 }
 
 // GetWeatherLine returns the weather conditions in a struct for passing to the templating.
@@ -112,22 +124,34 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 	// mps -> kph
 	speedFactor := 3.6
 
+	sp := periodWeatherInfo{
+		Icon:      weatherIcon[icon],
+		Desc:      cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
+		Temp:      int(math.Round(sw.Temp)),
+		FeelsLike: int(math.Round(sw.FeelsLike)),
+		Humidity:  sw.Humidity,
+		WindSpeed: int(math.Round(sw.WindSpeed) * speedFactor),
+		WindDir:   windDirectionIcon(sw.WindDeg),
+		Lat:       sw.Lat,
+		Lon:       sw.Lon,
+	}
+
+	ep := periodWeatherInfo{
+		Icon:      weatherIcon[icon],
+		Desc:      cases.Title(language.BritishEnglish).String(ew.Weather[0].Description),
+		Temp:      int(math.Round(ew.Temp)),
+		FeelsLike: int(math.Round(ew.FeelsLike)),
+		Humidity:  ew.Humidity,
+		WindSpeed: int(math.Round(ew.WindSpeed) * speedFactor),
+		WindDir:   windDirectionIcon(ew.WindDeg),
+		Lat:       ew.Lat,
+		Lon:       ew.Lon,
+	}
+
 	wi := WeatherInfo{
-		StartIcon:      weatherIcon[icon],
-		EndIcon:        weatherIcon[icon],
-		StartDesc:      cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
-		EndDesc:        cases.Title(language.BritishEnglish).String(ew.Weather[0].Description),
-		StartTemp:      int(math.Round(sw.Temp)),
-		EndTemp:        int(math.Round(ew.Temp)),
-		StartFeelsLike: int(math.Round(sw.FeelsLike)),
-		EndFeelsLike:   int(math.Round(ew.FeelsLike)),
-		StartHumidity:  sw.Humidity,
-		EndHumidity:    ew.Humidity,
-		StartWindSpeed: int(math.Round(sw.WindSpeed) * speedFactor),
-		EndWindSpeed:   int(math.Round(ew.WindSpeed) * speedFactor),
-		StartWindDir:   windDirectionIcon(sw.WindDeg),
-		EndWindDir:     windDirectionIcon(ew.WindDeg),
-		Aqi:            aqi,
+		Start: sp,
+		End:   ep,
+		Aqi:   aqi,
 	}
 
 	return &wi, nil
@@ -151,8 +175,11 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 		return data{}, err
 	}
 	defer r.Body.Close()
+	data := w.Data[0]
+	data.Lat = w.Lat
+	data.Lon = w.Lon
 
-	return w.Data[0], nil
+	return data, nil
 }
 
 // getPollution returns the AQI icon for the given period.

@@ -112,7 +112,25 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 	}
 
 	want := &WeatherInfo{
-		"☀️", "☀️", "Clear Sky", "Clear Sky", 19, 19, 16, 16, 64, 64, 14, 14, "↓", "↓", "💚",
+		Start: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+		},
+		End: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+		},
+		Aqi: "💚",
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -164,7 +182,25 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 	}
 
 	want := &WeatherInfo{
-		"☀️", "☀️", "Clear Sky", "Clear Sky", 19, 23, 16, 26, 64, 94, 14, 3, "↓", "↙", "💚",
+		Start: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+		},
+		End: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      23,
+			FeelsLike: 26,
+			Humidity:  94,
+			WindSpeed: 3,
+			WindDir:   "↙",
+		},
+		Aqi: "💚",
 	}
 
 	if !reflect.DeepEqual(got, want) {
