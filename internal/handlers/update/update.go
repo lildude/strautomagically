@@ -236,12 +236,17 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		return &update, msg
 	}
 
-	lat, lon := float64(0), float64(0)
+	painCave, lat, lon := true, float64(0), float64(0)
 	if len(activity.StartLatlng) > 0 {
-		lat, lon = activity.StartLatlng[0], activity.StartLatlng[1]
+		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
 	w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime), lat, lon)
+	if painCave {
+		// Put lat and lon back to 0 for easier templating
+		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
+	}
+
 	if w != nil {
 		wtr, err := execTemplate("weather.tmpl", w)
 		if err != nil {
