@@ -40,10 +40,8 @@ jobs:
       if: github.ref == 'refs/heads/main'
       uses: actions/upload-artifact@v3
       with:
-        name: app
-        path: |
-          ./strautomagically
-          ./templates/weather.tmpl
+        name: strautomagically
+        path: ./strautomagically
 
   deploy:
     name: Deploy
@@ -55,7 +53,7 @@ jobs:
     - name: Download
       uses: actions/download-artifact@v3
       with:
-        name: app
+        name: strautomagically
 
     - name: Login to Azure
       uses: azure/login@v1
