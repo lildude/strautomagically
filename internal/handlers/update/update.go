@@ -231,12 +231,17 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		}
 	}
 
-	// Add weather for activity if no GPS data or it's already there - assumes we were in the pain cave
-	if len(activity.StartLatlng) != 0 || strings.Contains(activity.Description, "AQI") {
+	// Do nothing if we've already got weather data
+	if strings.Contains(activity.Description, "AQI") {
 		return &update, msg
 	}
 
-	w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime))
+	lat, lon := float64(0), float64(0)
+	if len(activity.StartLatlng) > 0 {
+		lat, lon = activity.StartLatlng[0], activity.StartLatlng[1]
+	}
+
+	w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime), lat, lon)
 	if w != nil {
 		wtr, err := execTemplate("weather.tmpl", w)
 		if err != nil {

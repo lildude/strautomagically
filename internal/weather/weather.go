@@ -48,14 +48,6 @@ type pollution struct {
 	} `json:"list"`
 }
 
-type QueryParams struct {
-	Lat   float64
-	Lon   float64
-	Lang  string
-	Units string
-	AppID string
-}
-
 type periodWeatherInfo struct {
 	Icon      string
 	Desc      string
@@ -75,13 +67,13 @@ type WeatherInfo struct {
 }
 
 // GetWeatherLine returns the weather conditions in a struct for passing to the templating.
-func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*WeatherInfo, error) {
+func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, lon float64) (*WeatherInfo, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
 	ets := endDate.Unix()
 
 	// Get weather at start of activity
-	sw, err := getWeather(c, sts)
+	sw, err := getWeather(c, sts, lat, lon)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +84,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 	if startDate.Hour() == endDate.Hour() {
 		ew = sw
 	} else {
-		ew, err = getWeather(c, ets)
+		ew, err = getWeather(c, ets, lat, lon)
 		if err != nil {
 			// If we can't get the end weather, just use the start weather
 			ew = sw
@@ -117,7 +109,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 	}
 
 	// get aqi icon
-	aqi := getPollution(c, sts, ets)
+	aqi := getPollution(c, sts, ets, lat, lon)
 
 	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
@@ -158,8 +150,8 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 }
 
 // getWeather returns the weather conditions for the given time.
-func getWeather(c *client.Client, dt int64) (data, error) {
-	params := defaultParams()
+func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
+	params := queryParams(lat, lon)
 	params.Add("dt", fmt.Sprintf("%d", dt))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
@@ -183,9 +175,9 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 }
 
 // getPollution returns the AQI icon for the given period.
-func getPollution(c *client.Client, startDate, endDate int64) string {
+func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) string {
 	aqi := "?"
-	params := defaultParams()
+	params := queryParams(lat, lon)
 	params.Set("start", fmt.Sprintf("%d", startDate))
 	params.Set("end", fmt.Sprintf("%d", endDate))
 	c.BaseURL.Path = "/data/2.5/air_pollution/history"
@@ -217,14 +209,19 @@ func getPollution(c *client.Client, startDate, endDate int64) string {
 	return aqi
 }
 
-// defaultParams returns a url.Values object with the default parameters used for all queries.
-func defaultParams() url.Values {
+// queryParams returns a url.Values object with the parameters used for all queries.
+func queryParams(lat, lon float64) url.Values {
 	params := url.Values{}
 	params.Add("lat", os.Getenv("OWM_LAT"))
 	params.Add("lon", os.Getenv("OWM_LON"))
 	params.Add("lang", "en")
 	params.Add("units", "metric")
 	params.Add("appid", os.Getenv("OWM_API_KEY"))
+
+	if lat != 0 && lon != 0 {
+		params.Set("lat", fmt.Sprintf("%f", lat))
+		params.Set("lon", fmt.Sprintf("%f", lon))
+	}
 	return params
 }
 
