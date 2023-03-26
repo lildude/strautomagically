@@ -54,6 +54,24 @@ Authorization: Bearer {{$dotenv STRAVA_ACCESS_TOKEN}}
 GET https://www.strava.com/api/v3/activities/7542422772 HTTP/1.1
 Authorization: Bearer {{$dotenv STRAVA_ACCESS_TOKEN}}
 
+### Update an activity
+PUT https://www.strava.com/api/v3/activities/7542422772 HTTP/1.1
+Authorization: Bearer {{$dotenv STRAVA_ACCESS_TOKEN}}
+Content-Type: application/json
+
+{
+    "name": "Updated name",
+    "description": "Updated description",
+    "trainer": true,
+    "commute": true,
+    "private": true,
+    "gear_id": "b123456",
+    "type": "Ride",
+    "start_date_local": "2016-02-28T19:32:52Z",
+    "elapsed_time": 1800,
+    "description": "Updated description"
+}
+
 ### Get subscriptions
 GET https://www.strava.com/api/v3/push_subscriptions
     ?client_id={{$dotenv STRAVA_CLIENT_ID}}

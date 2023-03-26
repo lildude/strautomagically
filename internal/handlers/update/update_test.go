@@ -286,6 +286,14 @@ func TestConstructUpdate(t *testing.T) {
 			},
 			"row_title_from_first_line.json",
 		},
+		{
+			"add weather to outdoor activity",
+			&strava.UpdatableActivity{
+				GearID:      "b10013574",
+				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
+			"outside_ride_add_weather.json",
+		},
 	}
 
 	for _, tc := range tests {

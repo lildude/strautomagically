@@ -17,10 +17,14 @@ import (
 
 // weatherData struct holds just the data we need from the OpenWeatherMap API.
 type weatherData struct {
-	Data []data `json:"data"`
+	Lat  float64 `json:"lat"`
+	Lon  float64 `json:"lon"`
+	Data []data  `json:"data"`
 }
 
 type data struct {
+	Lat       float64   `json:"lat"`
+	Lon       float64   `json:"lon"`
 	Temp      float64   `json:"temp"`
 	FeelsLike float64   `json:"feels_like"`
 	Humidity  int64     `json:"humidity"`
@@ -44,32 +48,32 @@ type pollution struct {
 	} `json:"list"`
 }
 
+type periodWeatherInfo struct {
+	Icon      string
+	Desc      string
+	Temp      int
+	FeelsLike int
+	Humidity  int64
+	WindSpeed int
+	WindDir   string
+	Lat       float64
+	Lon       float64
+}
+
 type WeatherInfo struct {
-	StartIcon      string
-	EndIcon        string
-	StartDesc      string
-	EndDesc        string
-	StartTemp      int
-	EndTemp        int
-	StartFeelsLike int
-	EndFeelsLike   int
-	StartHumidity  int64
-	EndHumidity    int64
-	StartWindSpeed int
-	EndWindSpeed   int
-	StartWindDir   string
-	EndWindDir     string
-	Aqi            string
+	Start periodWeatherInfo
+	End   periodWeatherInfo
+	Aqi   string
 }
 
 // GetWeatherLine returns the weather conditions in a struct for passing to the templating.
-func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*WeatherInfo, error) {
+func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, lon float64) (*WeatherInfo, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
 	ets := endDate.Unix()
 
 	// Get weather at start of activity
-	sw, err := getWeather(c, sts)
+	sw, err := getWeather(c, sts, lat, lon)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +84,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 	if startDate.Hour() == endDate.Hour() {
 		ew = sw
 	} else {
-		ew, err = getWeather(c, ets)
+		ew, err = getWeather(c, ets, lat, lon)
 		if err != nil {
 			// If we can't get the end weather, just use the start weather
 			ew = sw
@@ -105,37 +109,49 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32) (*Weat
 	}
 
 	// get aqi icon
-	aqi := getPollution(c, sts, ets)
+	aqi := getPollution(c, sts, ets, lat, lon)
 
 	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
 	// mps -> kph
 	speedFactor := 3.6
 
+	sp := periodWeatherInfo{
+		Icon:      weatherIcon[icon],
+		Desc:      cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
+		Temp:      int(math.Round(sw.Temp)),
+		FeelsLike: int(math.Round(sw.FeelsLike)),
+		Humidity:  sw.Humidity,
+		WindSpeed: int(math.Round(sw.WindSpeed) * speedFactor),
+		WindDir:   windDirectionIcon(sw.WindDeg),
+		Lat:       sw.Lat,
+		Lon:       sw.Lon,
+	}
+
+	ep := periodWeatherInfo{
+		Icon:      weatherIcon[icon],
+		Desc:      cases.Title(language.BritishEnglish).String(ew.Weather[0].Description),
+		Temp:      int(math.Round(ew.Temp)),
+		FeelsLike: int(math.Round(ew.FeelsLike)),
+		Humidity:  ew.Humidity,
+		WindSpeed: int(math.Round(ew.WindSpeed) * speedFactor),
+		WindDir:   windDirectionIcon(ew.WindDeg),
+		Lat:       ew.Lat,
+		Lon:       ew.Lon,
+	}
+
 	wi := WeatherInfo{
-		StartIcon:      weatherIcon[icon],
-		EndIcon:        weatherIcon[icon],
-		StartDesc:      cases.Title(language.BritishEnglish).String(sw.Weather[0].Description),
-		EndDesc:        cases.Title(language.BritishEnglish).String(ew.Weather[0].Description),
-		StartTemp:      int(math.Round(sw.Temp)),
-		EndTemp:        int(math.Round(ew.Temp)),
-		StartFeelsLike: int(math.Round(sw.FeelsLike)),
-		EndFeelsLike:   int(math.Round(ew.FeelsLike)),
-		StartHumidity:  sw.Humidity,
-		EndHumidity:    ew.Humidity,
-		StartWindSpeed: int(math.Round(sw.WindSpeed) * speedFactor),
-		EndWindSpeed:   int(math.Round(ew.WindSpeed) * speedFactor),
-		StartWindDir:   windDirectionIcon(sw.WindDeg),
-		EndWindDir:     windDirectionIcon(ew.WindDeg),
-		Aqi:            aqi,
+		Start: sp,
+		End:   ep,
+		Aqi:   aqi,
 	}
 
 	return &wi, nil
 }
 
 // getWeather returns the weather conditions for the given time.
-func getWeather(c *client.Client, dt int64) (data, error) {
-	params := defaultParams()
+func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
+	params := queryParams(lat, lon)
 	params.Add("dt", fmt.Sprintf("%d", dt))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
@@ -151,14 +167,17 @@ func getWeather(c *client.Client, dt int64) (data, error) {
 		return data{}, err
 	}
 	defer r.Body.Close()
+	data := w.Data[0]
+	data.Lat = w.Lat
+	data.Lon = w.Lon
 
-	return w.Data[0], nil
+	return data, nil
 }
 
 // getPollution returns the AQI icon for the given period.
-func getPollution(c *client.Client, startDate, endDate int64) string {
+func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) string {
 	aqi := "?"
-	params := defaultParams()
+	params := queryParams(lat, lon)
 	params.Set("start", fmt.Sprintf("%d", startDate))
 	params.Set("end", fmt.Sprintf("%d", endDate))
 	c.BaseURL.Path = "/data/2.5/air_pollution/history"
@@ -190,14 +209,19 @@ func getPollution(c *client.Client, startDate, endDate int64) string {
 	return aqi
 }
 
-// defaultParams returns a url.Values object with the default parameters used for all queries.
-func defaultParams() url.Values {
+// queryParams returns a url.Values object with the parameters used for all queries.
+func queryParams(lat, lon float64) url.Values {
 	params := url.Values{}
 	params.Add("lat", os.Getenv("OWM_LAT"))
 	params.Add("lon", os.Getenv("OWM_LON"))
 	params.Add("lang", "en")
 	params.Add("units", "metric")
 	params.Add("appid", os.Getenv("OWM_API_KEY"))
+
+	if lat != 0 && lon != 0 {
+		params.Set("lat", fmt.Sprintf("%f", lat))
+		params.Set("lon", fmt.Sprintf("%f", lon))
+	}
 	return params
 }
 

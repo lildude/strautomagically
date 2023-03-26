@@ -20,11 +20,13 @@ func TestGetWeather(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()
 
-	latIn := "51.509865"
-	lonIn := "-0.118092"
+	latIn := 51.509865
+	lonIn := -0.118092
+	latInStr := strconv.FormatFloat(latIn, 'f', -1, 64)
+	lonInStr := strconv.FormatFloat(lonIn, 'f', -1, 64)
 	appIDIn := "123456789"
-	t.Setenv("OWM_LAT", latIn)
-	t.Setenv("OWM_LON", lonIn)
+	t.Setenv("OWM_LAT", latInStr)
+	t.Setenv("OWM_LON", lonInStr)
 	t.Setenv("OWM_API_KEY", appIDIn)
 	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC).Unix()
 	startOut := strconv.FormatInt(startIn, 10)
@@ -37,11 +39,12 @@ func TestGetWeather(t *testing.T) {
 		units := q.Get("units")
 		lang := q.Get("lang")
 		dt := q.Get("dt")
+
 		// Confirm we receive the right query params
-		if lat != latIn || lon != lonIn || appid != appIDIn || units != "metric" || lang != "en" || dt != startOut {
+		if lat != latInStr || lon != lonInStr || appid != appIDIn || units != "metric" || lang != "en" || dt != startOut {
 			t.Errorf(
 				"Expected lat=%s, lon=%s, appid=%s, units=metric, lang=en, dt=%s, got lat=%s, lon=%s, appid=%s, units=%s, lang=%s, dt=%s",
-				latIn, lonIn, appIDIn, startOut, lat, lon, appid, units, lang, dt,
+				latInStr, lonInStr, appIDIn, startOut, lat, lon, appid, units, lang, dt,
 			)
 		}
 
@@ -49,11 +52,13 @@ func TestGetWeather(t *testing.T) {
 		fmt.Fprintln(w, string(resp))
 	})
 
-	got, err := getWeather(rc, startIn)
+	got, err := getWeather(rc, startIn, latIn, lonIn)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
 	want := data{
+		Lat:       0,
+		Lon:       0,
 		Temp:      19.13,
 		FeelsLike: 16.44,
 		Humidity:  64,
@@ -79,7 +84,7 @@ func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
 	// Discard logs to avoid polluting test output
 	log.SetOutput(io.Discard)
 
-	got, err := getWeather(rc, 0)
+	got, err := getWeather(rc, 0, 0, 0)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -106,13 +111,35 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(rc, startIn, elapsed)
+	got, err := GetWeatherLine(rc, startIn, elapsed, 0, 0)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
 
 	want := &WeatherInfo{
-		"☀️", "☀️", "Clear Sky", "Clear Sky", 19, 19, 16, 16, 64, 64, 14, 14, "↓", "↓", "💚",
+		Start: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+			Lat:       0,
+			Lon:       0,
+		},
+		End: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+			Lat:       0,
+			Lon:       0,
+		},
+		Aqi: "💚",
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -158,13 +185,35 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(rc, startIn, elapsed)
+	got, err := GetWeatherLine(rc, startIn, elapsed, 0, 0)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
 
 	want := &WeatherInfo{
-		"☀️", "☀️", "Clear Sky", "Clear Sky", 19, 23, 16, 26, 64, 94, 14, 3, "↓", "↙", "💚",
+		Start: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      19,
+			FeelsLike: 16,
+			Humidity:  64,
+			WindSpeed: 14,
+			WindDir:   "↓",
+			Lat:       0,
+			Lon:       0,
+		},
+		End: periodWeatherInfo{
+			Icon:      "☀️",
+			Desc:      "Clear Sky",
+			Temp:      23,
+			FeelsLike: 26,
+			Humidity:  94,
+			WindSpeed: 3,
+			WindDir:   "↙",
+			Lat:       0,
+			Lon:       0,
+		},
+		Aqi: "💚",
 	}
 
 	if !reflect.DeepEqual(got, want) {
@@ -203,6 +252,9 @@ func TestGetPollutionForAllLevels(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()
 
+	latIn := 51.509865
+	lonIn := -0.118092
+
 	tests := []struct {
 		mockAQI int
 		want    string
@@ -223,7 +275,7 @@ func TestGetPollutionForAllLevels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%d", tt.mockAQI), func(t *testing.T) {
 			// Mock the aqi by fudging the start_date as we don't care about it in this test
-			got := getPollution(rc, int64(tt.mockAQI), 123999)
+			got := getPollution(rc, int64(tt.mockAQI), 123999, latIn, lonIn)
 			if got == tt.want {
 				t.Errorf("aqi %d expected %q, got %q", tt.mockAQI, tt.want, got)
 			}
@@ -238,7 +290,10 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	// Discard logs to avoid polluting test output
 	log.SetOutput(io.Discard)
 
-	got := getPollution(rc, 0, 0)
+	latIn := 51.509865
+	lonIn := -0.118092
+
+	got := getPollution(rc, 0, 0, latIn, lonIn)
 	if got != "?" {
 		t.Errorf("expected ?, got %q", got)
 	}

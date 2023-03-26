@@ -13,5 +13,7 @@
     "workout_type": 10,
     "hide_from_home": false,
     "gear_id": "b12345678987654321",
-    "description": "Test activity description\n AQI: ?\n"
+    "description": "Test activity description\n AQI: ?\n",
+    "start_latlng" : [],
+    "end_latlng" : []
 }
