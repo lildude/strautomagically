@@ -299,6 +299,32 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	}
 }
 
+func TestGetPollutionWithStartHourSameAsEndHourQueriesCurrentAPI(t *testing.T) {
+	rc, mux, teardown := setup()
+	defer teardown()
+
+	latIn := 51.509865
+	lonIn := -0.118092
+
+	mux.HandleFunc("/data/2.5/air_pollution", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		lat := q.Get("lat")
+		lon := q.Get("lon")
+		// Confirm we receive the right query params
+		if lat != fmt.Sprintf("%f", latIn) || lon != fmt.Sprintf("%f", lonIn) {
+			t.Errorf("Expected lat=%f, lon=%f, got lat=%s, lon=%s", latIn, lonIn, lat, lon)
+		}
+
+		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`
+		fmt.Fprintln(w, resp)
+	})
+
+	got := getPollution(rc, time.Now().Unix(), time.Now().Unix(), latIn, lonIn)
+	if got != "💚" {
+		t.Errorf("expected 💚, got %q", got)
+	}
+}
+
 // Setup establishes a test Server that can be used to provide mock responses during testing.
 // It returns a pointer to a client, a mux, the server URL and a teardown function that
 // must be called when testing is complete.

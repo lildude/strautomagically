@@ -178,9 +178,16 @@ func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
 func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) string {
 	aqi := "?"
 	params := queryParams(lat, lon)
-	params.Set("start", fmt.Sprintf("%d", startDate))
-	params.Set("end", fmt.Sprintf("%d", endDate))
-	c.BaseURL.Path = "/data/2.5/air_pollution/history"
+	c.BaseURL.Path = "/data/2.5/air_pollution"
+	startDateTime := time.Unix(startDate, 0)
+	endDateTime := time.Unix(endDate, 0)
+
+	// Get current AQI if we don't cross the hour mark
+	if endDateTime.Hour() > startDateTime.Hour() {
+		c.BaseURL.Path += "/history"
+		params.Set("start", fmt.Sprintf("%d", startDate))
+		params.Set("end", fmt.Sprintf("%d", endDate))
+	}
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
 	if err != nil {
