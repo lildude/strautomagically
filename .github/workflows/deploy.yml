@@ -1,0 +1,66 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+    - main
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Test]
+    types: [completed]
+
+jobs:
+  deploy:
+    name: Build & Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: Staging
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build
+      if: github.ref == 'refs/heads/main'
+      run: make build_azure
+
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+
+    - name: 'Deploy to Staging'
+      uses: Azure/functions-action@v1
+      id: fa
+      with:
+        app-name: ${{ secrets.FUNCTION_APP }}
+        package: ${{ github.workspace }}
+        slot-name: staging
+        respect-funcignore: true
+
+    - name: 'Check Deployment'
+      run: |
+        i=0
+        while [ $i -le 10 ]; do
+          sleep 10
+          RESPONSE=$(curl -sv "${{ steps.fa.outputs.app-url }}/start" 2>&1 | grep Strautomagically-Version | cut -d' ' -f3)
+          if [ "${RESPONSE//[$'\t\r\n']}" = "${GITHUB_SHA}" ]; then
+            exit 0
+          fi
+          i=$((i+1))
+        done
+        echo "Failed to deploy."
+        echo -e "Exp: ${GITHUB_SHA}\nGot: ${RESPONSE//[$'\t\r\n']}."
+        exit 1
+
+  release-to-prod:
+    name: Release to Production
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: Production
+    steps:
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+
+    - name: Swap Slots
+      run: az webapp deployment slot swap -s staging -n ${{ secrets.FUNCTION_APP }} -g ${{ secrets.FUNCTION_APP }}
