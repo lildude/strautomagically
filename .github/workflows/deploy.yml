@@ -60,4 +60,4 @@ jobs:
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 
     - name: Swap Slots
-      run: az webapp deployment slot swap -s staging -n ${{ secrets.FUNCTION_APP }} -g ${{ secrets.FUNCTION_APP }}
+      run: az functionapp deployment slot swap -s staging -n ${{ secrets.FUNCTION_APP }} -g ${{ secrets.FUNCTION_APP }}
