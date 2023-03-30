@@ -105,3 +105,10 @@ GET https://api.openweathermap.org/data/2.5/history/city
     &end=1518794979
     &appid={{$dotenv OWM_API_KEY}} HTTP/1.1
 
+### Get pollution
+GET https://api.openweathermap.org/data/2.5/air_pollution/history
+    ?lat={{$dotenv OWM_LAT}}
+    &lon={{$dotenv OWM_LON}}
+    &start=1618792774
+    &end=1680164948
+    &appid={{$dotenv OWM_API_KEY}} HTTP/1.1
