@@ -5,6 +5,7 @@ on:
   workflow_run:
     workflows: [Test]
     types: [completed]
+    branched: [main]
 
 jobs:
   deploy:
