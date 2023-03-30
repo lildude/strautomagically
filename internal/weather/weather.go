@@ -174,19 +174,19 @@ func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
 	return data, nil
 }
 
-// getPollution returns the AQI icon for the given period.
+// getPollution returns the AQI icon for the midpoint of the given period.
 func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) string {
 	aqi := "?"
 	params := queryParams(lat, lon)
 	c.BaseURL.Path = "/data/2.5/air_pollution"
-	startDateTime := time.Unix(startDate, 0)
 	endDateTime := time.Unix(endDate, 0)
 
-	// Get current AQI if we don't cross the hour mark
-	if endDateTime.Hour() > startDateTime.Hour() {
+	// Get historical AQI if the end time is before the last hour point before now
+	if endDateTime.Before(time.Now().Add(-1 * time.Hour)) {
 		c.BaseURL.Path += "/history"
-		params.Set("start", fmt.Sprintf("%d", startDate))
-		params.Set("end", fmt.Sprintf("%d", endDate))
+		midPoint := (startDate + endDate) / 2
+		params.Set("start", fmt.Sprintf("%d", midPoint))
+		params.Set("end", fmt.Sprintf("%d", midPoint))
 	}
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
