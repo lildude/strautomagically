@@ -300,7 +300,7 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	}
 }
 
-func TestGetPollutionWithStartHourSameAsEndHourQueriesCurrentAPI(t *testing.T) {
+func TestGetCurrentPollutionIfEndHourSameAsNowHour(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()
 
