@@ -1,4 +1,4 @@
-name: Test, Build and Deploy
+name: Test
 
 on:
   pull_request:
@@ -9,8 +9,8 @@ on:
       - main
 
 jobs:
-  build:
-    name: Test
+  test:
+    name: Unit Tests
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -31,44 +31,3 @@ jobs:
       with:
         version: latest
         skip-cache: true
-
-  deploy:
-    name: Build & Deploy
-    runs-on: ubuntu-latest
-    needs: build
-    environment: production
-    if: github.ref == 'refs/heads/main'
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Login to Azure
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
-
-    - name: Build
-      if: github.ref == 'refs/heads/main'
-      run: make build_azure
-
-    - name: 'Deploy to Azure'
-      uses: Azure/functions-action@v1
-      id: fa
-      with:
-        app-name: ${{ secrets.FUNCTION_APP }}
-        package: ${{ github.workspace }}
-        respect-funcignore: true
-
-    - name: 'Check Deploy'
-      run: |
-        i=0
-        while [ $i -le 10 ]; do
-          sleep 10
-          RESPONSE=$(curl -sv "${{ steps.fa.outputs.app-url }}/start" 2>&1 | grep Strautomagically-Version | cut -d' ' -f3)
-          if [ "${RESPONSE//[$'\t\r\n']}" = "${GITHUB_SHA}" ]; then
-            exit 0
-          fi
-          i=$((i+1))
-        done
-        echo "Failed to deploy."
-        echo -e "Exp: ${GITHUB_SHA}\nGot: ${RESPONSE//[$'\t\r\n']}."
-        exit 1
