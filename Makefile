@@ -12,7 +12,7 @@ lint:
 	golangci-lint run
 
 test:
-	ENV=test go test -v ./...
+	ENV=test go test -p 8 ./...
 
 coverage:
 	ENV=test go test ./... -coverprofile=coverage.out
