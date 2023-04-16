@@ -211,7 +211,7 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 		4: `🤎`, // Poor
 		5: `🖤`, // Very Poor
 	}
-	log.Printf("%+v", p)
+
 	if len(p.List) > 0 {
 		aqi = aqiIcon[p.List[0].Main.AQI]
 	}
