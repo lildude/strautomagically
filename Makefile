@@ -3,10 +3,10 @@
 SHA=`git show --quiet --format=format:%H`
 
 build:
-	go build -o strautomagically cmd/strautomagically/main.go
+	CGO_ENABLED=0 go build -o strautomagically cmd/strautomagically/main.go
 
 build_azure:
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.Version=$(SHA)" -o strautomagically cmd/strautomagically/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.Version=$(SHA)" -o strautomagically cmd/strautomagically/main.go
 
 lint:
 	golangci-lint run
