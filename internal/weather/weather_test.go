@@ -156,7 +156,7 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 	elapsed := int32(60 * 65)
 	endIn := startIn.Add(time.Duration(elapsed) * time.Second)
 	endOut := strconv.FormatInt(endIn.Unix(), 10)
-	midPoint := strconv.FormatInt(startIn.Add(time.Duration(elapsed/2)*time.Second).Unix(), 10)
+	midPoint := startIn.Add(time.Duration(elapsed/2) * time.Second).Unix()
 
 	// Handle start request
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
@@ -175,11 +175,11 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 
 	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
-		start := q.Get("start")
-		end := q.Get("end")
+		start, _ := strconv.ParseInt(q.Get("start"), 10, 64)
+		end, _ := strconv.ParseInt(q.Get("end"), 10, 64)
 		// Confirm we receive the right query params
-		if start != midPoint || end != midPoint {
-			t.Errorf("Expected start=%s, end=%s, got start=%s, end=%s", midPoint, midPoint, start, end)
+		if start != midPoint-1800 || end != midPoint+1800 {
+			t.Errorf("Expected start=%d, end=%d, got start=%d, end=%d", midPoint-1800, midPoint+1800, start, end)
 		}
 
 		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`

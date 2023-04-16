@@ -4,6 +4,7 @@ package weather
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 	"os"
@@ -185,8 +186,9 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 	if endDateTime.Before(time.Now().Add(-1 * time.Hour)) {
 		c.BaseURL.Path += "/history"
 		midPoint := (startDate + endDate) / 2
-		params.Set("start", fmt.Sprintf("%d", midPoint))
-		params.Set("end", fmt.Sprintf("%d", midPoint))
+		// Start and end need to be at least 1 hour apart
+		params.Set("start", fmt.Sprintf("%d", midPoint-1800))
+		params.Set("end", fmt.Sprintf("%d", midPoint+1800))
 	}
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
@@ -197,6 +199,7 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 	p := pollution{}
 	r, err := c.Do(req, &p)
 	if err != nil {
+		log.Println("[ERROR] Failed to get pollution: ", err)
 		return aqi
 	}
 	defer r.Body.Close()
