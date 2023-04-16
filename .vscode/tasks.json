@@ -5,13 +5,8 @@
   "tasks": [
     {
       "label": "run all tests",
-      "command": "go",
-      "args": [
-        "test",
-        "-v",
-        "./..."
-      ],
-      "group": "build"
+      "command": "make test",
+      "group": "test"
     },
     {
       "label": "run tests in file",
@@ -21,13 +16,42 @@
         "-v",
         "${file}"
       ],
+      "group": "test"
+    },
+    {
+      "label": "Lint",
+      "command": "make lint",
+      "group": "test"
+    },
+    {
+      "label": "Coverage",
+      "command": "make coverage",
+      "group": "test"
+    },
+    {
+      "label": "Start server",
+      "command": "make start",
       "group": "build"
     },
     {
-      "type": "func",
-      "command": "host start",
-      "problemMatcher": "$func-watch",
-      "isBackground": true
+      "label": "Build",
+      "command": "make build",
+      "group": "build"
+    },
+    {
+      "label": "Build for Azure",
+      "command": "make build_azure",
+      "group": "build"
+    },
+    {
+      "label": "Get auth token",
+      "command": "make get-auth-token",
+      "group": "build"
+    },
+    {
+      "label": "Get last activity",
+      "command": "make get-last-activity",
+      "group": "build"
     }
   ],
 }
