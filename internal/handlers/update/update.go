@@ -126,7 +126,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		log.Printf("[INFO] Updated activity:%s (%d): %s", updated.Name, updated.ID, msg)
+		log.Printf("[INFO] Activity:%s (%d): %s", updated.Name, updated.ID, msg)
 
 		// Cache activity ID if we've succeeded
 		err = rcache.Set("strava_activity", webhook.ObjectID)
@@ -207,8 +207,9 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 			msg = fmt.Sprintf("set title to %s", title)
 		}
 
-	case "Run":
-		return &update, msg
+	// Nothing to change here yet
+	// case "Run":
+	// 	return &update, msg
 
 	case "VirtualRide":
 		// Set gear to trainer if activity is a ride and external_id starts with zwift
