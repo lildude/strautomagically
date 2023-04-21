@@ -294,6 +294,15 @@ func TestConstructUpdate(t *testing.T) {
 			},
 			"outside_ride_add_weather.json",
 		},
+		{
+			"adds weather for pain cave for virtual rides",
+			&strava.UpdatableActivity{
+				GearID:      "b9880609",
+				Trainer:     true,
+				Description: "Test virtualride description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
+			"virtualride.json",
+		},
 	}
 
 	for _, tc := range tests {
@@ -307,7 +316,7 @@ func TestConstructUpdate(t *testing.T) {
 
 			got, _ := constructUpdate(rc, &a)
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("expected %v, got %v", tc.want, got)
+				t.Errorf("expected %+v, got %+v", tc.want, got)
 			}
 		})
 	}

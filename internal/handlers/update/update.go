@@ -212,12 +212,10 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 	// 	return &update, msg
 
 	case "VirtualRide":
-		// Set gear to trainer if activity is a ride and external_id starts with zwift
-		if activity.ExternalID != "" && activity.ExternalID[0:5] == "zwift" {
-			update.GearID = trainer
-			update.Trainer = true
-			msg = "set gear to trainer"
-		}
+		// Set gear to trainer
+		update.GearID = trainer
+		update.Trainer = true
+		msg = "set gear to trainer"
 	case "Walk":
 		// Mute walks and set shoes
 		update.HideFromHome = true
@@ -238,7 +236,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 	}
 
 	painCave, lat, lon := true, float64(0), float64(0)
-	if len(activity.StartLatlng) > 0 {
+	if len(activity.StartLatlng) > 0 && activity.Type != "VirtualRide" {
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
