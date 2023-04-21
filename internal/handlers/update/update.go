@@ -236,7 +236,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 	}
 
 	painCave, lat, lon := true, float64(0), float64(0)
-	if len(activity.StartLatlng) > 0 {
+	if len(activity.StartLatlng) > 0 && activity.Type != "VirtualRide" {
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
