@@ -22,13 +22,13 @@ start: build
 	ENV=dev func start --custom
 
 get-auth-token:
-	echo GET strava_auth_token | redis-cli -u ${REDIS_URL}
+	echo GET strava_auth_token | redis-cli -u ${REDIS_URL} --no-auth-warning | jq
 
 get-last-activity:
-	echo GET strava_activity | redis-cli -u ${REDIS_URL}
+	echo GET strava_activity | redis-cli -u ${REDIS_URL} --no-auth-warning | jq
 
 reset-last-activity:
-	echo DEL strava_activity | redis-cli -u ${REDIS_URL}
+	echo DEL strava_activity | redis-cli -u ${REDIS_URL} --no-auth-warning
 
 reset-auth-token:
-	echo DEL strava_auth_token | redis-cli -u ${REDIS_URL}
+	echo DEL strava_auth_token | redis-cli -u ${REDIS_URL} --no-auth-warning
