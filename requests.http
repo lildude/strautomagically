@@ -38,6 +38,11 @@ Content-Type: application/json
     }
 }
 
+### Test prod deployment
+GET {{$dotenv PRODUCTION_URL}}/start HTTP/1.1
+
+### Test staging deployment
+GET {{$dotenv STAGING_URL}}/start HTTP/1.1
 
 ### Test DELETE method
 DELETE http://localhost:7071/api/webhook HTTP/1.1
@@ -112,3 +117,14 @@ GET https://api.openweathermap.org/data/2.5/air_pollution/history
     &start=1618792774
     &end=1680164948
     &appid={{$dotenv OWM_API_KEY}} HTTP/1.1
+
+### Get pollution now
+GET https://api.openweathermap.org/data/2.5/air_pollution
+    ?lat={{$dotenv OWM_LAT}}
+    &lon={{$dotenv OWM_LON}}
+    &appid={{$dotenv OWM_API_KEY}} HTTP/1.1
+
+### Get Pirate weather for now
+GET https://api.pirateweather.net/forecast/{{ $dotenv PIRATE_API_KEY }}/{{ $dotenv OWM_LAT }},{{ $dotenv OWM_LON }}
+    ?units=uk HTTP/1.1
+

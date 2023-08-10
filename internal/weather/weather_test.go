@@ -107,7 +107,7 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 	})
 
 	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
-		resp := `{"list":[{"dt":1605182401,"main":{"aqi":1}}]}`
+		resp := `{"list":[{"main":{"aqi":1},"components":{"pm2_5": 10.0, "co": 1.92,"no2": 12.51},"dt": 1691658340}]}`
 		fmt.Fprintln(w, resp)
 	})
 
@@ -182,7 +182,7 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 			t.Errorf("Expected start=%d, end=%d, got start=%d, end=%d", midPoint-1800, midPoint+1800, start, end)
 		}
 
-		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`
+		resp := `{"list":[{"main":{"aqi":1},"components":{"pm2_5": 10.0, "co": 1.92,"no2": 12.51},"dt": 1691658340}]}`
 		fmt.Fprintln(w, resp)
 	})
 
@@ -249,36 +249,39 @@ func TestWindDirectionIcon(t *testing.T) {
 	}
 }
 
+// TestGetPollution tests the getPollution function by mocking the response from the API
+// and ensuring we get the expected emoji back.
+//
+// This test uses the lat value to return the pm2_5 value we use to modify the response
 func TestGetPollutionForAllLevels(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()
 
-	latIn := 51.509865
-	lonIn := -0.118092
-
 	tests := []struct {
-		mockAQI int
-		want    string
-	}{ // Not sure why I can't do direct emoji comparison here
-		{1, `\U1F49A`}, // 💚
-		{2, `\U1F49B`}, // 💛
-		{3, `\U1F9E1`}, // 🧡
-		{4, `\U1F90E`}, // 🤎
-		{5, `\U1F5A4`}, // 🖤
+		mockPM2_5 float64
+		want      string
+	}{
+		{10, "💚"},
+		{20, "💛"},
+		{40, "🧡"},
+		{80, "❤️"},
+		{160, "💜"},
+		{320, "🤎"},
+		{400, "🖤"},
 	}
 	mux.HandleFunc("/data/2.5/air_pollution/history", func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query().Get("start")
-		aqi, _ := strconv.Atoi(q)
-		resp := fmt.Sprintf(`{"list":[{"dt":1605182400,"main":{"aqi":%d}}]}`, aqi)
+		q := r.URL.Query().Get("lat")
+		pm2_5, _ := strconv.ParseFloat(q, 64)
+		resp := fmt.Sprintf(`{"list":[{"main":{"aqi":1},"components":{"pm2_5": %.2f, "co": 1.92,"no2": 12.51},"dt": 1691658340}]}`, pm2_5)
 		fmt.Fprintln(w, resp)
 	})
 
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%d", tt.mockAQI), func(t *testing.T) {
-			// Mock the aqi by fudging the start_date as we don't care about it in this test
-			got := getPollution(rc, int64(tt.mockAQI), 123999, latIn, lonIn)
-			if got == tt.want {
-				t.Errorf("aqi %d expected %q, got %q", tt.mockAQI, tt.want, got)
+		t.Run(fmt.Sprintf("%.2f", tt.mockPM2_5), func(t *testing.T) {
+			got := getPollution(rc, 1691648340, 1691658340, tt.mockPM2_5, -0.118092)
+
+			if got != tt.want {
+				t.Errorf("aqi %.2f expected %s, got %s", tt.mockPM2_5, tt.want, got)
 			}
 		})
 	}
@@ -316,7 +319,7 @@ func TestGetCurrentPollutionIfEndHourSameAsNowHour(t *testing.T) {
 			t.Errorf("Expected lat=%f, lon=%f, got lat=%s, lon=%s", latIn, lonIn, lat, lon)
 		}
 
-		resp := `{"list":[{"dt":1605182400,"main":{"aqi":1}}]}`
+		resp := `{"list":[{"main":{"aqi":1},"components":{"pm2_5": 10.0, "co": 1.92,"no2": 12.51},"dt": 1691658340}]}`
 		fmt.Fprintln(w, resp)
 	})
 
