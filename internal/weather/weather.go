@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	goaqi "github.com/lildude/go-aqi"
 	"github.com/lildude/strautomagically/internal/client"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -46,7 +47,19 @@ type pollution struct {
 		Main struct {
 			AQI int `json:"AQI"`
 		} `json:"main"`
+		Components components `json:"components"`
 	} `json:"list"`
+}
+
+type components struct {
+	CO   float64 `json:"co"`
+	NO   float64 `json:"no"`
+	NO2  float64 `json:"no2"`
+	O3   float64 `json:"o3"`
+	SO2  float64 `json:"so2"`
+	PM25 float64 `json:"pm2_5"`
+	PM10 float64 `json:"pm10"`
+	NH3  float64 `json:"nh3"`
 }
 
 type periodWeatherInfo struct {
@@ -204,16 +217,30 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 	}
 	defer r.Body.Close()
 
-	aqiIcon := map[int]string{
-		1: `💚`, // Good
-		2: `💛`, // Fair
-		3: `🧡`, // Moderate
-		4: `🤎`, // Poor
-		5: `🖤`, // Very Poor
+	// OpenWeatherMap uses a non-standard AQI scale so we need to convert it.
+	// Converting to the scale from https://aqicn.org/scale/.
+	results, err := goaqi.Calculate(
+		goaqi.PM25{Concentration: p.List[0].Components.PM25},
+		goaqi.CO{Concentration: p.List[0].Components.CO},
+		goaqi.NO2{Concentration: p.List[0].Components.NO2},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return aqi
+	}
+
+	aqiIcon := map[string]string{
+		"Good":          "💚",  //  Good
+		"Moderate":      "💛",  // Moderate
+		"Sensitive":     "🧡",  // Unhealthy for sensitive groups
+		"Unhealthy":     "❤️", // Unhealthy
+		"VeryUnhealthy": "💜",  // Very Unhealthy
+		"Hazardous":     "🤎",  // Hazardous
+		"VeryHazardous": "🖤",  // Very Hazardous
 	}
 
 	if len(p.List) > 0 {
-		aqi = aqiIcon[p.List[0].Main.AQI]
+		aqi = aqiIcon[results.Index.Key]
 	}
 
 	return aqi
