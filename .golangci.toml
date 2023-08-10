@@ -119,6 +119,7 @@
                                 # Too hard to know when you trip over this, and I feel like it needs a human
                                 # to understand if a function is too complex.
     "deadcode",           # unmaintained
+    "depguard",           # Annoying
     "dogsled",            # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
                                 # This doesn't seem to be a common problem, nor a source of bugs. It would be
                                 # better to have a linter that just tells you not to return 4 things in the

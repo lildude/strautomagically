@@ -252,7 +252,7 @@ func TestWindDirectionIcon(t *testing.T) {
 // TestGetPollution tests the getPollution function by mocking the response from the API
 // and ensuring we get the expected emoji back.
 //
-// This test uses the lat value to return the pm2_5 value we use to modify the response
+// This test uses the lat value to return the pm2_5 value we use to modify the response.
 func TestGetPollutionForAllLevels(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()
