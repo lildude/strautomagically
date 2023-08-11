@@ -218,12 +218,9 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 	defer r.Body.Close()
 
 	// OpenWeatherMap uses a non-standard AQI scale so we need to convert it.
-	// Converting to the scale from https://aqicn.org/scale/.
-	results, err := goaqi.Calculate(
-		goaqi.PM25{Concentration: p.List[0].Components.PM25},
-		goaqi.CO{Concentration: p.List[0].Components.CO},
-		goaqi.NO2{Concentration: p.List[0].Components.NO2},
-	)
+	// Converting to the scale from https://aqicn.org/scale/ using only the PM2.5 value
+	// as I'm not too concerned about it being 100% accurate.
+	results, err := goaqi.Calculate(goaqi.PM25{Concentration: p.List[0].Components.PM25})
 	if err != nil {
 		fmt.Println(err)
 		return aqi
