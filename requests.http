@@ -128,3 +128,12 @@ GET https://api.openweathermap.org/data/2.5/air_pollution
 GET https://api.pirateweather.net/forecast/{{ $dotenv PIRATE_API_KEY }}/{{ $dotenv OWM_LAT }},{{ $dotenv OWM_LON }}
     ?units=uk HTTP/1.1
 
+### Get TrainingPeaks ical
+GET https://www.trainingpeaks.com/ical/{{$dotenv TP_CAL_ID}}.ics HTTP/1.1
+
+### Get TrainerRoad ical
+GET https://api.trainerroad.com/v1/calendar/ics/{{$dotenv TR_CAL_ID}} HTTP/1.1
+
+### Get TrainerRoad activities
+GET https://www.trainerroad.com/app/api/calendar/activities/{{$dotenv TR_USERNAME}}
+    ?startDate=10-25-2023&endDate=10-26-2023 HTTP/1.1
