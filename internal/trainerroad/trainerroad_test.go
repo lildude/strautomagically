@@ -1,4 +1,4 @@
-package trainerroad
+package calendarevent
 
 import (
 	"io"
@@ -27,10 +27,14 @@ func TestGetCalendarEvent(t *testing.T) {
 			}, nil
 		},
 	}
-
+	cs := CalendarService{
+		BaseURL: "https://api.trainerroad.com/v1/calendar/ics",
+		CalID:   "foobar",
+	}
 	t.Run("should return an event", func(t *testing.T) {
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
-		event, err := GetCalendarEvent(mockClient, start)
+
+		event, err := cs.GetCalendarEvent(mockClient, start)
 		if err != nil {
 			t.Errorf("unexpected error = %v", err)
 			return
@@ -51,7 +55,7 @@ func TestGetCalendarEvent(t *testing.T) {
 			},
 		}
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
-		_, err := GetCalendarEvent(mockClient, start)
+		_, err := cs.GetCalendarEvent(mockClient, start)
 		if err == nil {
 			t.Errorf("expected an error but got nil")
 			return
@@ -60,7 +64,7 @@ func TestGetCalendarEvent(t *testing.T) {
 
 	t.Run("should return nil if no events found", func(t *testing.T) {
 		start := time.Date(2025, 12, 6, 0, 0, 0, 1, time.UTC)
-		event, _ := GetCalendarEvent(mockClient, start)
+		event, _ := cs.GetCalendarEvent(mockClient, start)
 		if event != nil {
 			t.Errorf("expected event to be nil but got %v", event)
 			return

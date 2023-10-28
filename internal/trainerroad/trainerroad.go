@@ -1,20 +1,14 @@
-// Package trainerroad implements methods download TrainerRoad calendar entries for the ical feed.
-package trainerroad
+// Package calendarevent implements methods to get events from ical feeds.
+package calendarevent
 
 import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/apognu/gocal"
-)
-
-var (
-	BaseURL = "https://api.trainerroad.com/v1/calendar/ics"
-	CalID   = os.Getenv("TRAINERROAD_CAL_ID")
 )
 
 type Event struct {
@@ -24,14 +18,23 @@ type Event struct {
 	End         time.Time
 }
 
+type CalendarEventGetter interface {
+	GetCalendarEvent(client HTTPClient, start time.Time) (*Event, error)
+}
+
+type CalendarService struct {
+	BaseURL string
+	CalID   string
+}
+
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
 // GetCalendarEvent returns a single event for the date passed in.
-func GetCalendarEvent(client HTTPClient, start time.Time) (*Event, error) {
+func (cs CalendarService) GetCalendarEvent(client HTTPClient, start time.Time) (*Event, error) {
 	ctx := context.Background()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", BaseURL, CalID), http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", cs.BaseURL, cs.CalID), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
