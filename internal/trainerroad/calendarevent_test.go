@@ -17,8 +17,8 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 	return m.DoFunc(req)
 }
 
-func TestGetCalendarEvent(t *testing.T) {
-	resp, _ := os.ReadFile("testdata/calendar.ics")
+func TestGetTrainerRoadCalendarEvent(t *testing.T) {
+	resp, _ := os.ReadFile("testdata/trainerroad.ics")
 	mockClient := &MockClient{
 		DoFunc: func(*http.Request) (*http.Response, error) {
 			return &http.Response{
