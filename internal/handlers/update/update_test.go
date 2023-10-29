@@ -186,6 +186,15 @@ func TestConstructUpdate(t *testing.T) {
 			"trainerroad.json",
 		},
 		{
+			"prefix and set title from TrainerRoad calendar for outside ride activities",
+			&strava.UpdatableActivity{
+				Name:    "TR: Capulin - Outside",
+				GearID:  "b10013574",
+				Trainer: false,
+			},
+			"trainerroad_outside.json",
+		},
+		{
 			"set gear to trainer for Zwift activities",
 			&strava.UpdatableActivity{
 				GearID:  "b9880609",
@@ -194,7 +203,7 @@ func TestConstructUpdate(t *testing.T) {
 			"zwift.json",
 		},
 		{
-			"set get to bike",
+			"set gear to bike",
 			&strava.UpdatableActivity{
 				GearID: "b10013574",
 			},
@@ -317,8 +326,12 @@ func TestConstructUpdate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var a strava.Activity
+			var resp []byte
 			// TODO: Hacky AF - replace me
-			resp, _ := os.ReadFile("testdata/trainerroad.ics")
+			if strings.HasPrefix(tc.fixture, "trainerroad") {
+				resp, _ = os.ReadFile("testdata/trainerroad.ics")
+			}
+
 			mockClient := &MockClient{
 				DoFunc: func(*http.Request) (*http.Response, error) {
 					return &http.Response{

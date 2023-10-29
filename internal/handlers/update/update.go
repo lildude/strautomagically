@@ -114,7 +114,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
-		log.Println("[DEBUG] update:", update)
+		log.Printf("[DEBUG] update: %+v\n", update)
 		log.Println("[DEBUG] message:", msg)
 		return
 	}
@@ -158,25 +158,39 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		return &update, msg
 
 	case "Ride":
-		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer if external_id starts with trainerroad
-		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
-			// We assume we've already done this if the activity name starts with TR
-			if !strings.HasPrefix(activity.Name, "TR: ") {
-				title = activity.Name
-				event, err := trcal.GetCalendarEvent(activity.StartDate)
-				if err != nil {
-					log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
-				} else {
-					if event != nil && event.Summary != "" {
-						title = event.Summary
-					}
+		title = activity.Name
+		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer
+		// if external_id starts with trainerroad else set gear to bike and append "- Outside"
+
+		// We assume we've already done this if the activity name starts with TR
+		if !strings.HasPrefix(activity.Name, "TR: ") {
+			event, err := trcal.GetCalendarEvent(activity.StartDate)
+			if err != nil {
+				log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
+			} else {
+				// We assuming if there is an event for the day, the activity is the same
+				if event != nil && event.Summary != "" {
+					title = "TR: " + event.Summary
 				}
-				update.Name = "TR: " + title
 			}
+		}
+
+		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
 			update.GearID = trainer
 			update.Trainer = true
-			msg = "prefixed name of ride with TR and set gear to trainer"
+		} else {
+			update.GearID = bike
+			if strings.HasPrefix(title, "TR: ") {
+				title += " - Outside"
+			}
 		}
+
+		if title != activity.Name {
+			update.Name = title
+		}
+
+		msg = "prefixed name of ride with TR and set gear to trainer"
+
 		// Set gear to b10013574 if activity is a ride and not on trainer
 		if !activity.Trainer {
 			update.GearID = bike

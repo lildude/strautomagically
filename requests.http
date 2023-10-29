@@ -22,6 +22,23 @@ Content-Type: application/json
     }
 }
 
+### Test webhook POST for trainerroad
+POST http://localhost:7071/webhook HTTP/1.1
+Content-Type: application/json
+
+{
+    "aspect_type": "create",
+    "event_time": 1516126040,
+    "object_id": 10123699817,
+    "object_type": "activity",
+    "owner_id": 1295848,
+    "subscription_id": 120475,
+    "external_id": "trainerroad-1234",
+    "updates": {
+        "title": "Messy"
+    }
+}
+
 ### Test webhook POST - https://www.strava.com/activities/7366272349
 POST {{$dotenv STRAVA_CALLBACK_URI}} HTTP/1.1
 Content-Type: application/json
