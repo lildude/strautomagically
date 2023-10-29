@@ -167,11 +167,11 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 			event, err := trcal.GetCalendarEvent(activity.StartDate)
 			if err != nil {
 				log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
-			} else {
-				// We assuming if there is an event for the day, the activity is the same
-				if event != nil && event.Summary != "" {
-					title = "TR: " + event.Summary
-				}
+			}
+
+			// We assuming if there is an event for the day, the activity is the same
+			if event != nil && event.Summary != "" {
+				title = "TR: " + event.Summary
 			}
 		}
 

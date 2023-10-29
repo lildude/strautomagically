@@ -19,7 +19,7 @@ type Event struct {
 }
 
 type CalendarEventGetter interface {
-	GetCalendarEvent(time.Time) (*Event, error)
+	GetCalendarEvent(start time.Time) (*Event, error)
 }
 
 type CalendarService struct {
