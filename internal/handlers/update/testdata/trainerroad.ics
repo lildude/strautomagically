@@ -1,0 +1,23 @@
+BEGIN:VCALENDAR
+PRODID:-// Trainer Road LLC// Cycling// EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-PUBLISHED-TTL:PT15M
+REFRESH-INTERVAL;VALUE=DURATION:PT15M
+NAME:My TrainerRoad Calendar
+X-WR-CALNAME:My TrainerRoad Calendar
+BEGIN:VEVENT
+TRANSP:TRANSPARENT
+DTSTART;VALUE=DATE:20180216
+DTEND;VALUE=DATE:20180217
+DTSTAMP:20231025T162521Z
+UID:b3ef8eba-20a6-4501-9abd-b08f00b3313c_20180216T000000Z
+CREATED:20231002T105225Z
+LAST-MODIFIED:20180216T125538Z
+STATUS:CONFIRMED
+SUMMARY:1:15 - Capulin
+DESCRIPTION:TSS 41, IF 0.57.  Power Based Description: Warm Up:     - Ride for 5 minutes gradually raising your     power from 102 to 141     watts.      Main Set:      Settle in for 65 minutes between 141 and     154 watts.     Cool Down:     - Spin easy for 5 minutes. RPE Based Description: Warm Up:  - Ride for 5 minutes gradually raising your power from RPE 4 to RPE 6.    Main Set:   Settle in for 65 minutes at RPE 6.  Cool Down:  - Spin easy for 5 minutes. Goals: Aerobic Endurance workouts are aimed at improving your aerobic-power-producing capabilities in a low-stress manner. By riding for increasingly longer periods of time, your endurance muscle fibers become more efficient at utilizing fat for fuel and sparing sugar stores for more intense efforts. Additionally, Endurance workouts like this can improve oxygen delivery & utilization, increase muscular resistance to fatigue, improve integrity of connective tissue, and even help you improve your on-bike nutrition strategies.
+X-ALT-DESC;FMTTYPE=text/html:<!DOCTYPE html><html><body><h4>TSS 41, IF 0.57. </h4><hr><div><h4>Power Based Description</h4>Warm Up:<br> <br/>  <br/>  - Ride for 5 minutes gradually raising your  <br/>  <br/> power from 102 to 141  <br/>  <br/> watts.<br><br>  <br/>  <br/>  Main Set:<br>  <br/>  <br/>  Settle in for 65 minutes between 141 and  <br/>  <br/> 154 watts.<br><br> <br/>  <br/>  Cool Down:<br>  <br/>  <br/> - Spin easy for 5 minutes.</div><div><h4>RPE Based Description</h4>Warm Up:<br> <br/> - Ride for 5 minutes gradually raising your power from RPE 4 to RPE 6. <br/><br><br>  <br/> Main Set:<br>  <br/> Settle in for 65 minutes at RPE 6.<br><br> <br/> Cool Down:<br>  <br/>- Spin easy for 5 minutes.</div><div><h4>Goals</h4>Aerobic Endurance workouts are aimed at improving your aerobic-power-producing capabilities in a low-stress manner.<br><br>&nbsp;By riding for increasingly longer periods of time, your endurance muscle fibers become more efficient at utilizing fat for fuel and sparing sugar stores for more intense efforts.<br><br>&nbsp;Additionally, Endurance workouts like this can improve oxygen delivery &amp; utilization, increase muscular resistance to fatigue, improve integrity of connective tissue, and even help you improve your on-bike nutrition strategies.</div></body></html>
+END:VEVENT
+END:VCALENDAR

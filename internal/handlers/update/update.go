@@ -17,6 +17,7 @@ import (
 	"text/template"
 
 	"github.com/lildude/strautomagically/internal/cache"
+	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 	"github.com/lildude/strautomagically/internal/weather"
@@ -108,7 +109,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
-	update, msg := constructUpdate(wclient, activity) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
+	update, msg := constructUpdate(wclient, activity, trcal) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -141,7 +143,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *strava.UpdatableActivity, msg string) {
+func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -156,10 +158,20 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity) (ua *str
 		return &update, msg
 
 	case "Ride":
-		// Prefix name of rides with TR if external_id starts with trainerroad and set gear to trainer
+		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer if external_id starts with trainerroad
 		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
+			// We assume we've already done this if the activity name starts with TR
 			if !strings.HasPrefix(activity.Name, "TR: ") {
-				update.Name = "TR: " + activity.Name
+				title = activity.Name
+				event, err := trcal.GetCalendarEvent(activity.StartDate)
+				if err != nil {
+					log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
+				} else {
+					if event != nil && event.Summary != "" {
+						title = event.Summary
+					}
+				}
+				update.Name = "TR: " + title
 			}
 			update.GearID = trainer
 			update.Trainer = true

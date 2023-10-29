@@ -15,6 +15,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/jarcoal/httpmock"
+	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
 	"github.com/lildude/strautomagically/internal/strava"
 )
@@ -121,6 +122,14 @@ func TestUpdateHandler(t *testing.T) {
 	}
 }
 
+type MockClient struct {
+	DoFunc func(req *http.Request) (*http.Response, error)
+}
+
+func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
+	return m.DoFunc(req)
+}
+
 func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
 	log.SetOutput(io.Discard)
@@ -168,9 +177,9 @@ func TestConstructUpdate(t *testing.T) {
 			"humane_burpees.json",
 		},
 		{
-			"prefix and set get for TrainerRoad activities",
+			"prefix and set title from TrainerRoad calendar for TrainerRoad activities",
 			&strava.UpdatableActivity{
-				Name:    "TR: Test Activity",
+				Name:    "TR: Capulin",
 				GearID:  "b9880609",
 				Trainer: true,
 			},
@@ -308,13 +317,24 @@ func TestConstructUpdate(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var a strava.Activity
+			// TODO: Hacky AF - replace me
+			resp, _ := os.ReadFile("testdata/trainerroad.ics")
+			mockClient := &MockClient{
+				DoFunc: func(*http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Body:       io.NopCloser(strings.NewReader(string(resp))),
+					}, nil
+				},
+			}
+			trcal := calendarevent.NewCalendarService(mockClient, "test", "test")
 			activity, _ := os.ReadFile("testdata/" + tc.fixture)
 			err := json.Unmarshal(activity, &a)
 			if err != nil {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got, _ := constructUpdate(rc, &a)
+			got, _ := constructUpdate(rc, &a, trcal)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %+v, got %+v", tc.want, got)
 			}
