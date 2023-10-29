@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -166,7 +167,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, l
 // getWeather returns the weather conditions for the given time.
 func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
 	params := queryParams(lat, lon)
-	params.Add("dt", fmt.Sprintf("%d", dt))
+	params.Add("dt", strconv.FormatInt(dt, 10))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)
@@ -200,8 +201,8 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 		c.BaseURL.Path += "/history"
 		midPoint := (startDate + endDate) / 2
 		// Start and end need to be at least 1 hour apart
-		params.Set("start", fmt.Sprintf("%d", midPoint-1800))
-		params.Set("end", fmt.Sprintf("%d", midPoint+1800))
+		params.Set("start", strconv.FormatInt(midPoint-1800, 10))
+		params.Set("end", strconv.FormatInt(midPoint+1800, 10))
 	}
 	c.BaseURL.RawQuery = params.Encode()
 	req, err := c.NewRequest(context.Background(), "GET", "", nil)

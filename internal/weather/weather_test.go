@@ -240,7 +240,7 @@ func TestWindDirectionIcon(t *testing.T) {
 		{361, ""},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%d", tt.degrees), func(t *testing.T) {
+		t.Run(strconv.Itoa(tt.degrees), func(t *testing.T) {
 			got := windDirectionIcon(tt.degrees)
 			if got != tt.want {
 				t.Errorf("expected %q, got %q", tt.want, got)
