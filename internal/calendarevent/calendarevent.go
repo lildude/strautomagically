@@ -19,10 +19,11 @@ type Event struct {
 }
 
 type CalendarEventGetter interface {
-	GetCalendarEvent(client HTTPClient, start time.Time) (*Event, error)
+	GetCalendarEvent(time.Time) (*Event, error)
 }
 
 type CalendarService struct {
+	Client  HTTPClient
 	BaseURL string
 	CalID   string
 }
@@ -31,14 +32,22 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+func NewCalendarService(client HTTPClient, baseURL, calID string) *CalendarService {
+	return &CalendarService{
+		Client:  client,
+		BaseURL: baseURL,
+		CalID:   calID,
+	}
+}
+
 // GetCalendarEvent returns a single event for the date passed in.
-func (cs CalendarService) GetCalendarEvent(client HTTPClient, start time.Time) (*Event, error) {
+func (cs CalendarService) GetCalendarEvent(start time.Time) (*Event, error) {
 	ctx := context.Background()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", cs.BaseURL, cs.CalID), http.NoBody)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.Do(req)
+	resp, err := cs.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}

@@ -28,13 +28,14 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 		},
 	}
 	cs := CalendarService{
+		Client:  mockClient,
 		BaseURL: "https://api.trainerroad.com/v1/calendar/ics",
 		CalID:   "foobar",
 	}
 	t.Run("should return an event", func(t *testing.T) {
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
 
-		event, err := cs.GetCalendarEvent(mockClient, start)
+		event, err := cs.GetCalendarEvent(start)
 		if err != nil {
 			t.Errorf("unexpected error = %v", err)
 			return
@@ -54,8 +55,10 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 				return nil, http.ErrHandlerTimeout
 			},
 		}
+		cs.Client = mockClient
+
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
-		_, err := cs.GetCalendarEvent(mockClient, start)
+		_, err := cs.GetCalendarEvent(start)
 		if err == nil {
 			t.Errorf("expected an error but got nil")
 			return
@@ -64,7 +67,7 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 
 	t.Run("should return nil if no events found", func(t *testing.T) {
 		start := time.Date(2025, 12, 6, 0, 0, 0, 1, time.UTC)
-		event, _ := cs.GetCalendarEvent(mockClient, start)
+		event, _ := cs.GetCalendarEvent(start)
 		if event != nil {
 			t.Errorf("expected event to be nil but got %v", event)
 			return
