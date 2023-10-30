@@ -169,9 +169,12 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 				log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
 			}
 
-			// We assuming if there is an event for the day, the activity is the same
+			// We assume if there is an event for the day, the activity is the same
 			if event != nil && event.Summary != "" {
+				log.Println("[INFO] found TrainerRoad calendar event:", event.Summary)
 				title = "TR: " + event.Summary
+			} else {
+				log.Println("[INFO] no TrainerRoad calendar event found")
 			}
 		}
 
@@ -189,13 +192,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 			update.Name = title
 		}
 
-		msg = "prefixed name of ride with TR and set gear to trainer"
-
-		// Set gear to b10013574 if activity is a ride and not on trainer
-		if !activity.Trainer {
-			update.GearID = bike
-			msg = "set gear to bike"
-		}
+		msg = "prefixed name of ride with TR and set gear"
 
 	case "Rowing":
 		// Workouts created in ErgZone will have the name in the first line of the description
