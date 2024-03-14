@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -11,7 +10,7 @@ import (
 func TestSetGet(t *testing.T) {
 	r := miniredis.RunT(t)
 	defer r.Close()
-	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("REDIS_URL", "redis://"+r.Addr())
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		t.Error(err)
@@ -32,7 +31,7 @@ func TestSetGet(t *testing.T) {
 func TestSetGetJSON(t *testing.T) {
 	r := miniredis.RunT(t)
 	defer r.Close()
-	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("REDIS_URL", "redis://"+r.Addr())
 	cache, err := NewRedisCache(os.Getenv("REDIS_URL"))
 	if err != nil {
 		t.Error(err)
