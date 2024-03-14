@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -42,7 +41,7 @@ func TestAuthHandler(t *testing.T) {
 
 	r := miniredis.RunT(t)
 	defer r.Close()
-	t.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+	t.Setenv("REDIS_URL", "redis://"+r.Addr())
 	t.Setenv("STATE_TOKEN", "test-state-token")
 
 	tests := []struct {
@@ -79,7 +78,7 @@ func TestAuthHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("/auth%s", tc.query), strings.NewReader(tc.body))
+			req, err := http.NewRequest(http.MethodPost, "/auth"+tc.query, strings.NewReader(tc.body))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -4,7 +4,6 @@ package update
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -227,7 +226,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		}
 		update.Name = title
 		if title != "" {
-			msg = fmt.Sprintf("set title to %s", title)
+			msg = "set title to " + title
 		}
 
 	// Nothing to change here yet

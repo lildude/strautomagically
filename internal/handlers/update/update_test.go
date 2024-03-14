@@ -99,7 +99,7 @@ func TestUpdateHandler(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Pre-populate Redis with the expected values, if set, and set REDIS_URL to use the miniredis instance
 			if tc.redis[0] != "" {
-				os.Setenv("REDIS_URL", fmt.Sprintf("redis://%s", r.Addr()))
+				os.Setenv("REDIS_URL", "redis://"+r.Addr())
 				r.Set("strava_auth_token", tc.redis[0])
 				r.Set("strava_activity", tc.redis[1])
 			} else {
