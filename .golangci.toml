@@ -41,8 +41,6 @@
         #                         # This is standard practice and makes it easy to find error types and sentinels in the code.
         # "errorlint",        # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
         #                         # This ensures you use errors.Is instead of == to compare errors, to avoid bugs with wrapping.
-        # "exportloopref",    # catch bugs resulting from referencing variables on range scope
-        #                         # variables initialized in for loops change with each loop, which can cause bugs.
         # "forcetypeassert",  # finds type asserts where you don't use the v, ok format
         #                         # if you do v := foo.(bar) and foo is not a bar, this will panic, and that's bad.
         # "gochecknoinits",   # Checks that no init functions are present in Go code
@@ -107,8 +105,8 @@
     # manual disable list as well. See the bottom of the file for a list of
     # disabled linters and why they're disabled.
     disable = [
-# List of linters supported by golangci-lint that we intentionally do not use.
-#   "name",               # description
+    # List of linters supported by golangci-lint that we intentionally do not use.
+    # "name",               # description
                                 # reason to disable
 
     "asciicheck",         # checks that your code does not contain non-ASCII identifiers
@@ -118,7 +116,6 @@
     "cyclop",	           # checks function and package cyclomatic complexity
                                 # Too hard to know when you trip over this, and I feel like it needs a human
                                 # to understand if a function is too complex.
-    "deadcode",           # unmaintained
     "depguard",           # Annoying
     "dogsled",            # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
                                 # This doesn't seem to be a common problem, nor a source of bugs. It would be
@@ -133,7 +130,6 @@
                                 # This tends to hit a lot of false positives, and can lead to a lot of nolint statements.
                                 # Definitely could be useful for specific repos of focused libraries where you know you
                                 # update enums a lot, and want to make sure your switch statements stay up to date.
-    "exhaustivestruct",   # deprectated
     "exhaustruct",        # Checks if all struct's fields are initialized
                                 # This is generally a feature, not a bug. Requiring a //nolint whenever you partially
                                 # initialize a struct would be pretty annoying.
@@ -157,7 +153,7 @@
                                 # While this is probably a good idea, it can be restrictive and hard to fix.
     "godox",              # detects use of FIXME, TODO and other comment keywords
                                 # Ideally these should be issues, but sometimes it's useful to have them in the code, too.
-    "goerr113",           # checks that you use errors.Is and don't define your own errors except as package variables.
+    "err113",           # checks that you use errors.Is and don't define your own errors except as package variables.
                                 # duplicates other error checking linters
     "gofmt",              # checks whether code was gofmt-ed.
                                 # use goimports instead, they have slightly different formatting.
@@ -165,24 +161,18 @@
                                 # use goimports instead, they have slightly different formatting.
     "goheader",           # checks if file header matches a pattern
                                 # useful for companies that mandate a copyright header on every file. That's not us.
-    "golint",             # unmaintained
-    "gomnd",              # an analyzer to detect magic numbers
-                                # just too noisy
-    "ifshort",            # makes sure you use if err := foo(); err != nil
-                                # this is really more personal preference, and sometimes can hinder readability.
+    "mnd",              # finds magic numbers
+                                # this is a good idea, but it's hard to know when it's a false positive.
     "importas",           # enforces consistent import aliases
                                 # this is kind of a special case for avoiding import collisions, and not really needed for us.
-    "interfacer",         # unmaintined
     "ireturn",            # complains when you return an interface
                                 # sometimes that's the right thing to do
     "lll",                # reports long lines
                                 # duplicated by other checks
-    "maligned",           # archived by owner
     "nilnil",             # reports when you return a nil error and a nil value
                                 # while this is often misleading, there are too many valid uses
     "nonamedreturns",     # complains whenever you use named returns
                                 # named returns can be good for documentation, actually
-    "nosnakecase",        # deprecated by owner
     "nlreturn",           # nlreturn checks for a new line before return and branch statements to increase code clarity
                                 # I'm not a monster, newline if you like, or not.
     "paralleltest",       # paralleltest detects missing usage of t.Parallel() method in your Go test
@@ -191,8 +181,6 @@
                                 # this can save some memory and copying, but it's too noisy to be useful.
     "promlinter",         # Check Prometheus metrics naming via promlint
                                 # enable if you use prometheus
-    "scopelint",          # unmaintained
-    "structcheck",        # unmaintained
     "tagliatelle",        # Checks that struct tags match a certain format (camelcase, snakecase etc)
                                 # likely to cause a lot of false positives if you're making tags for other people's APIs
     "testpackage",        # makes you use a separate _test package
@@ -203,7 +191,6 @@
                                 # probably unnecessary, and fails weirdly with a config file set with -c
     "unparam",            # Reports unused function parameters
                                 # seems likely to have false positives
-    "varcheck",           # unmaintained
     "wastedassign",       # finds wasted assignment statements.
                                 # duplicates ineffassign
     "whitespace",         # finds extra newlines at the beginning of functions and if statements
@@ -241,11 +228,11 @@
     # from this option's value (see skip-dirs-use-default).
     # "/" will be replaced by current OS file path separator to properly work
     # on Windows.
-    skip-dirs = []
+    # skip-dirs = []
 
     # default is true. Enables skipping of directories:
     #   vendor$, third_party$, testdata$, examples$, Godeps$, builtin$
-    skip-dirs-use-default = true
+    # skip-dirs-use-default = true
 
     # which files to skip: they will be analyzed, but issues from them
     # won't be reported. Default value is empty list, but there is
@@ -253,7 +240,7 @@
     # autogenerated files. If it's not please let us know.
     # "/" will be replaced by current OS file path separator to properly work
     # on Windows.
-    skip-files = []
+    # skip-files = []
 
     # by default isn't set. If set we pass it to "go list -mod={option}". From "go help modules":
     # If invoked with -mod=readonly, the go command is disallowed from the implicit
@@ -263,7 +250,7 @@
     # If invoked with -mod=vendor, the go command assumes that the vendor
     # directory holds the correct copies of dependencies and ignores
     # the dependency descriptions in go.mod.
-    modules-download-mode = ""
+    # modules-download-mode = ""
 
     # Allow multiple parallel golangci-lint instances running.
     # If false (default) - golangci-lint acquires file lock on start.
@@ -273,7 +260,7 @@
 [output]
     # colored-line-number|line-number|json|tab|checkstyle|code-climate|junit-xml|github-actions
     # default is "colored-line-number"
-    format = "colored-line-number"
+    #format = "colored-line-number"
 
     # print lines of code with issue, default is true
     print-issued-lines = true
@@ -282,7 +269,7 @@
     print-linter-name = true
 
     # make issues output unique by line, default is true
-    uniq-by-line = true
+    #uniq-by-line = true
 
     # add a prefix to the output file references; default is no prefix
     path-prefix = ""
@@ -366,15 +353,15 @@
 
 [linters-settings.depguard]
     # ban some modules with replacements
-    list-type = "blacklist"
-    include-go-root = true
-    packages = [
+    # list-type = "blacklist"
+    # include-go-root = true
+    # packages = [
         # we shouldn't use pkg/error anymore
-        "github.com/pkg/error",
-    ]
+    #    "github.com/pkg/error",
+    # ]
 
-	[[linters-settings.depguard.packages-with-error-message]]
-	    "github.com/pkg/error" = "Please use stdlib errors module"
+	#[[linters-settings.depguard.packages-with-error-message]]
+	#    "github.com/pkg/error" = "Please use stdlib errors module"
 
 [linters-settings.errorlint]
     # Check whether fmt.Errorf uses the %w verb for formatting errors. See the readme for caveats
@@ -430,7 +417,7 @@
     # Enable to ensure that nolint directives are all used. Default is true.
     allow-unused = true
     # Disable to ensure that nolint directives don't have a leading space. Default is true.
-    allow-leading-space = true
+    #allow-leading-space = true
     # Exclude following linters from requiring an explanation.  Default is [].
     allow-no-explanation = []
     # Enable to require an explanation of nonzero length after each nolint directive. Default is false.
