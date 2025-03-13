@@ -62,7 +62,7 @@ func (cs CalendarService) GetCalendarEvent(start time.Time) (*Event, error) {
 	}
 
 	var events []Event
-	for i := 0; i < len(c.Events); i++ {
+	for i := range len(c.Events) {
 		component := c.Events[i]
 		events = append(events, Event{
 			Summary:     parseSummary(component.Summary),
