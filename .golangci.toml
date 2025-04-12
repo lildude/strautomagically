@@ -138,6 +138,7 @@
                                 # This can actually be really useful, but needs a deep understanding of patterns
                                 # we want devs to avoid in our specific repos. Definitely look into it if you have
                                 # a list of "don't use XYZ" items.
+    "forcetypeassert",    # Annoying
     "funlen",	          # Tool for detection of long functions
                                 # We could maybe put this in with a pretty big size limit, but it feels like it would be
                                 # of limited benefit and cause grumbling.
