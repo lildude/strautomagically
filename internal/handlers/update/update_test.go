@@ -13,12 +13,30 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
+	"github.com/jackc/pgtype"
 	"github.com/jarcoal/httpmock"
 	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
+
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to connect to test database: %v", err)
+	}
+
+	err = db.AutoMigrate(&model.Athlete{})
+	if err != nil {
+		t.Fatalf("failed to migrate test database: %v", err)
+	}
+
+	return db
+}
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
@@ -51,61 +69,48 @@ func TestUpdateHandler(t *testing.T) {
 	tests := []struct {
 		name        string
 		webhookBody string
-		redis       []string // Used to seed Redis with the expected values for the tests
 		wantStatus  int
 	}{
 		{
 			"no webhook body",
 			``,
-			[]string{"", ""},
 			400,
 		},
 		{
 			"invalid JSON in webhook body",
 			`{"foo: "bar"}`,
-			[]string{"", ""},
 			400,
 		},
 		{
 			"non-create event",
 			`{"aspect_type": "update"}`,
-			[]string{"", ""},
 			200,
 		},
 		{
-			"unresponsive redis",
-			`{"aspect_type": "create", "object_id": 123}`,
-			[]string{"", ""},
-			500,
-		},
-		{
 			"repeat event",
-			`{"aspect_type": "create", "object_id": 123}`,
-			[]string{token, "123"},
+			`{"owner_id": 1, "aspect_type": "create", "object_id": 123}`,
 			200,
 		},
 		{
 			"create event",
-			`{"aspect_type": "create", "object_id": 456}`,
-			[]string{token, ""},
+			`{"owner_id": 1, "aspect_type": "create", "object_id": 456}`,
 			200,
 		},
 	}
 
-	r := miniredis.RunT(t)
-	defer r.Close()
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+
+	tokenJSON := pgtype.JSONB{}
+	tokenJSON.Set(map[string]string{"access_token": "123456789"})
+	db.Create(&model.Athlete{
+		StravaAthleteID:   1,
+		StravaAthleteName: "test",
+		StravaAuthToken:   tokenJSON,
+	})
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Pre-populate Redis with the expected values, if set, and set REDIS_URL to use the miniredis instance
-			if tc.redis[0] != "" {
-				os.Setenv("REDIS_URL", "redis://"+r.Addr())
-				r.Set("strava_auth_token", tc.redis[0])
-				r.Set("strava_activity", tc.redis[1])
-			} else {
-				os.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
-			}
-
 			req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(tc.webhookBody))
 			if err != nil {
 				t.Fatal(err)
