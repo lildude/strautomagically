@@ -21,6 +21,9 @@ coverage:
 start: build
 	ENV=dev func start --custom
 
+run:
+	air -c .air.toml
+
 get-auth-token:
 	echo GET strava_auth_token | redis-cli -u ${REDIS_URL} --no-auth-warning | jq
 
