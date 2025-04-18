@@ -72,29 +72,29 @@ func TestUpdateHandler(t *testing.T) {
 		wantStatus  int
 	}{
 		{
-			"no webhook body",
-			``,
-			400,
+			name:        "No webhook body",
+			webhookBody: ``,
+			wantStatus:  400,
 		},
 		{
-			"invalid JSON in webhook body",
-			`{"foo: "bar"}`,
-			400,
+			name:        "Invalid JSON in webhook body",
+			webhookBody: `{"foo: "bar"}`,
+			wantStatus:  400,
 		},
 		{
-			"non-create event",
-			`{"aspect_type": "update"}`,
-			200,
+			name:        "Non-create event",
+			webhookBody: `{"aspect_type": "update"}`,
+			wantStatus:  200,
 		},
 		{
-			"repeat event",
-			`{"owner_id": 1, "aspect_type": "create", "object_id": 123}`,
-			200,
+			name:        "Repeat event",
+			webhookBody: `{"owner_id": 1, "aspect_type": "create", "object_id": 123}`,
+			wantStatus:  200,
 		},
 		{
-			"create event",
-			`{"owner_id": 1, "aspect_type": "create", "object_id": 456}`,
-			200,
+			name:        "Create event",
+			webhookBody: `{"owner_id": 1, "aspect_type": "create", "object_id": 456}`,
+			wantStatus:  200,
 		},
 	}
 
@@ -156,190 +156,129 @@ func TestConstructUpdate(t *testing.T) {
 		fixture string
 	}{
 		{
-			"no changes",
-			&strava.UpdatableActivity{},
-			"no_change.json",
+			name:    "No changes",
+			want:    &strava.UpdatableActivity{},
+			fixture: "no_change.json",
 		},
 		{
-			"unhandled activity type",
-			&strava.UpdatableActivity{},
-			"handcycle.json",
+			name:    "Unhandled activity type",
+			want:    &strava.UpdatableActivity{},
+			fixture: "handcycle.json",
 		},
 		{
-			"set gear and mute walks",
-			&strava.UpdatableActivity{
-				HideFromHome: true,
-				GearID:       "g10043849",
-			},
-			"walks.json",
+			name:    "Set gear and mute walks",
+			want:    &strava.UpdatableActivity{HideFromHome: true, GearID: "g10043849"},
+			fixture: "walks.json",
 		},
 		{
-			"set humane burpees title and mute",
-			&strava.UpdatableActivity{
-				Name:         "Humane Burpees",
-				HideFromHome: true,
-			},
-			"humane_burpees.json",
+			name:    "Set humane burpees title and mute",
+			want:    &strava.UpdatableActivity{Name: "Humane Burpees", HideFromHome: true},
+			fixture: "humane_burpees.json",
 		},
 		{
-			"prefix and set title from TrainerRoad calendar for TrainerRoad activities",
-			&strava.UpdatableActivity{
-				Name:    "TR: Capulin",
-				GearID:  "b9880609",
-				Trainer: true,
-			},
-			"trainerroad.json",
+			name:    "Prefix and set title from TrainerRoad calendar for TrainerRoad activities",
+			want:    &strava.UpdatableActivity{Name: "TR: Capulin", GearID: "b9880609", Trainer: true},
+			fixture: "trainerroad.json",
 		},
 		{
-			"prefix and set title from TrainerRoad calendar for outside ride activities",
-			&strava.UpdatableActivity{
-				Name:    "TR: Capulin - Outside",
-				GearID:  "b10013574",
-				Trainer: false,
-			},
-			"trainerroad_outside.json",
+			name:    "Prefix and set title from TrainerRoad calendar for outside ride activities",
+			want:    &strava.UpdatableActivity{Name: "TR: Capulin - Outside", GearID: "b10013574", Trainer: false},
+			fixture: "trainerroad_outside.json",
 		},
 		{
-			"set gear to trainer for Zwift activities",
-			&strava.UpdatableActivity{
-				GearID:  "b9880609",
-				Trainer: true,
-			},
-			"zwift.json",
+			name:    "Set gear to trainer for Zwift activities",
+			want:    &strava.UpdatableActivity{GearID: "b9880609", Trainer: true},
+			fixture: "zwift.json",
 		},
 		{
-			"set gear to Ride",
-			&strava.UpdatableActivity{
-				GearID: "b10013574",
-			},
-			"ride.json",
+			name:    "Set gear to Ride",
+			want:    &strava.UpdatableActivity{GearID: "b10013574"},
+			fixture: "ride.json",
 		},
 		{
-			"set rowing title: speed pyramid",
-			&strava.UpdatableActivity{
-				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
-			},
-			"row_speed_pyramid.json",
+			name:    "Set rowing title: speed pyramid",
+			want:    &strava.UpdatableActivity{Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work"},
+			fixture: "row_speed_pyramid.json",
 		},
 		{
-			"set rowing title: speed pyramid - the other one",
-			&strava.UpdatableActivity{
-				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
-			},
-			"row_speed_pyramid_2.json",
+			name:    "Set rowing title: speed pyramid - the other one",
+			want:    &strava.UpdatableActivity{Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work"},
+			fixture: "row_speed_pyramid_2.json",
 		},
 		{
-			"set rowing title: 8x500",
-			&strava.UpdatableActivity{
-				Name: "8x 500m w/ 3.5' Active RI Row",
-			},
-			"row_8x500.json",
+			name:    "Set rowing title: 8x500",
+			want:    &strava.UpdatableActivity{Name: "8x 500m w/ 3.5' Active RI Row"},
+			fixture: "row_8x500.json",
 		},
 		{
-			"set rowing title: 8x500 - the other one",
-			&strava.UpdatableActivity{
-				Name: "8x 500m w/ 3.5' Active RI Row",
-			},
-			"row_8x500_2.json",
+			name:    "Set rowing title: 8x500 - the other one",
+			want:    &strava.UpdatableActivity{Name: "8x 500m w/ 3.5' Active RI Row"},
+			fixture: "row_8x500_2.json",
 		},
 		{
-			"set rowing title: 5x1500",
-			&strava.UpdatableActivity{
-				Name: "5x 1500m w/ 5' RI Row",
-			},
-			"row_5x1500.json",
+			name:    "Set rowing title: 5x1500",
+			want:    &strava.UpdatableActivity{Name: "5x 1500m w/ 5' RI Row"},
+			fixture: "row_5x1500.json",
 		},
 		{
-			"set rowing title: 4x2000",
-			&strava.UpdatableActivity{
-				Name: "4x 2000m w/5' Active RI Row",
-			},
-			"row_4x2000.json",
+			name:    "Set rowing title: 4x2000",
+			want:    &strava.UpdatableActivity{Name: "4x 2000m w/5' Active RI Row"},
+			fixture: "row_4x2000.json",
 		},
 		{
-			"set rowing title: 4x2000 - the other one",
-			&strava.UpdatableActivity{
-				Name: "4x 2000m w/5' Active RI Row",
-			},
-			"row_4x2000_2.json",
+			name:    "Set rowing title: 4x2000 - the other one",
+			want:    &strava.UpdatableActivity{Name: "4x 2000m w/5' Active RI Row"},
+			fixture: "row_4x2000_2.json",
 		},
 		{
-			"set rowing title: 4x1000",
-			&strava.UpdatableActivity{
-				Name: "4x 1000m /5' RI Row",
-			},
-			"row_4x1000.json",
+			name:    "Set rowing title: 4x1000",
+			want:    &strava.UpdatableActivity{Name: "4x 1000m /5' RI Row"},
+			fixture: "row_4x1000.json",
 		},
 		{
-			"set rowing title: waterfall",
-			&strava.UpdatableActivity{
-				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
-			},
-			"row_waterfall.json",
+			name:    "Set rowing title: waterfall",
+			want:    &strava.UpdatableActivity{Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"},
+			fixture: "row_waterfall.json",
 		},
 		{
-			"set rowing title: waterfall - the other one",
-			&strava.UpdatableActivity{
-				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
-			},
-			"row_waterfall_2.json",
+			name:    "Set rowing title: waterfall - the other one",
+			want:    &strava.UpdatableActivity{Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"},
+			fixture: "row_waterfall_2.json",
 		},
 		{
-			"set rowing title: warmup",
-			&strava.UpdatableActivity{
-				Name:         "Warm-up Row",
-				HideFromHome: true,
-			},
-			"row_warmup.json",
+			name:    "Set rowing title: warmup",
+			want:    &strava.UpdatableActivity{Name: "Warm-up Row", HideFromHome: true},
+			fixture: "row_warmup.json",
 		},
 		{
-			"add weather to pop'd description",
-			&strava.UpdatableActivity{
-				Name:         "Warm-up Row",
-				HideFromHome: true,
-				Description:  "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-			},
-			"row_add_weather.json",
+			name:    "Add weather to pop'd description",
+			want:    &strava.UpdatableActivity{Name: "Warm-up Row", HideFromHome: true, Description: "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			fixture: "row_add_weather.json",
 		},
 		{
-			"set rowing title from first line of description",
-			&strava.UpdatableActivity{
-				Name:        "5x 1.5k w/ 5' Active RI",
-				Description: "\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-			},
-			"row_title_from_first_line.json",
+			name:    "Set rowing title from first line of description",
+			want:    &strava.UpdatableActivity{Name: "5x 1.5k w/ 5' Active RI", Description: "\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			fixture: "row_title_from_first_line.json",
 		},
 		{
-			"add weather to outdoor activity",
-			&strava.UpdatableActivity{
-				GearID:      "b10013574",
-				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-			},
-			"outside_ride_add_weather.json",
+			name:    "Add weather to outdoor activity",
+			want:    &strava.UpdatableActivity{GearID: "b10013574", Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			fixture: "outside_ride_add_weather.json",
 		},
 		{
-			"adds weather for pain cave for virtual rides",
-			&strava.UpdatableActivity{
-				GearID:      "b9880609",
-				Trainer:     true,
-				Description: "Test virtualride description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-			},
-			"virtualride.json",
+			name:    "Adds weather for pain cave for virtual rides",
+			want:    &strava.UpdatableActivity{GearID: "b9880609", Trainer: true, Description: "Test virtualride description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			fixture: "virtualride.json",
 		},
 		{
-			"adds summit total for run",
-			&strava.UpdatableActivity{
-				Description: "Test run description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🦶⬆️ 1000m\n",
-			},
-			"summit_add_for_run.json",
+			name:    "Adds summit total for run",
+			want:    &strava.UpdatableActivity{Description: "Test run description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🦶⬆️ 1000m\n"},
+			fixture: "summit_add_for_run.json",
 		},
 		{
-			"adds summit total for ride",
-			&strava.UpdatableActivity{
-				GearID:      "b10013574",
-				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🚴‍♂️⬆️ 1234m\n",
-			},
-			"summit_add_for_ride.json",
+			name:    "Adds summit total for ride",
+			want:    &strava.UpdatableActivity{GearID: "b10013574", Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🚴‍♂️⬆️ 1234m\n"},
+			fixture: "summit_add_for_ride.json",
 		},
 	}
 
