@@ -15,6 +15,6 @@
 # vendor/
 bin/
 tmp/
-.env
+.env*
 /strautomagically
 local.settings.json
