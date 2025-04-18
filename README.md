@@ -65,13 +65,8 @@ Optional: If you want to add weather information to your entries, you will need 
     
   - in [VSCode](https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-other?tabs=go%2Clinux#create-the-function-app-in-azure)
   
-2. Create an Azure user-assigned managed identity for the deployment credentials. Follow [these][oidc] instructions.[^1]
+2. Create an Azure Service Principal for RBAC for the deployment credentials. Follow [these](https://github.com/Azure/functions-action/blob/d4e7f5d24dc958f6904ffd095fe5033d474abe49/README.md#using-azure-service-principal-for-rbac-as-deployment-credential) instructions.
 3. Add the configuration variables from the `.env` file above to the Azure function configuration, or if you added them to `local.settings.json` too, use the VSCode Azure Functions extension to upload them.  
 4. Deploy using your preferred method - either manually from the Azure Functions extension in VSCode or using the GitHub workflow by merging a PR into `main` or pushing directly to main.
 5. Visit the `STRAVA_REDIRECT_URI` URL and authorize the application with Strava.
 6. Go for a run.
-
-[^1]: Easier but less secure is to use a Azure Service Principal as detailed [here][azure-sp]
-
-[azure-sp]: https://github.com/Azure/functions-action/blob/d4e7f5d24dc958f6904ffd095fe5033d474abe49/README.md#using-azure-service-principal-for-rbac-as-deployment-credential
-[oidc]: https://github.com/Azure/functions-action/blob/b3b268251787fd864b34b16d9ad50de5af807adc/README.md#use-oidc-recommended
