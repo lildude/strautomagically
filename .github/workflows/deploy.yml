@@ -11,6 +11,9 @@ jobs:
   deploy:
     name: Build & Deploy to Staging
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC
+      contents: read # Required for actions/checkout
     environment: Staging
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
@@ -21,9 +24,11 @@ jobs:
       run: make build_azure
 
     - name: Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+        client-id: ${{ vars.AZURE_CLIENT_ID }} # Required to log in with OIDC
+        tenant-id`: ${{ vars.AZURE_TENANT_ID }} # Required to log in with OIDC
+        subscript`ion-id: ${{ vars.AZURE_SUBSCRIPTION_ID }} # Required to log in with OIDC
 
     - name: 'Deploy to Staging'
       uses: Azure/functions-action@v1
@@ -53,12 +58,17 @@ jobs:
     name: Release to Production
     needs: deploy
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC
+      contents: read # Required for actions/checkout
     environment: Production
     steps:
     - name: Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@v2
       with:
-        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+        client-id: ${{ vars.AZURE_CLIENT_ID }} # Required to log in with OIDC
+        tenant-id: ${{ vars.AZURE_TENANT_ID }} # Required to log in with OIDC
+        subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }} # Required to log in with OIDC
 
     - name: Swap Slots
       run: az functionapp deployment slot swap -s staging -n ${{ secrets.FUNCTION_APP }} -g ${{ secrets.FUNCTION_APP }}
