@@ -49,8 +49,7 @@ reset-auth-token:
 # Set this in AZURE_RBAC_CREDENTIALS in GitHub Actions secrets
 new-azure-creds:
 	az ad sp create-for-rbac --name "Strautomagically" --role contributor \
-    --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically/providers/Microsoft.Web/sites/strautomagically
+    --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically/providers/Microsoft.Web/sites/strautomagically \
+		--json-auth
 
-	# az ad sp create-for-rbac --name "Strautomagically" --role contributor \
-  #   --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically
 
