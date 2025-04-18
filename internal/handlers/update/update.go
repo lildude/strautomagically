@@ -19,8 +19,10 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +56,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var athlete model.Athlete
 	db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID)
 
-	if athlete.LastActivityID == webhook.ObjectID {
+	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
 		log.Println("[INFO] ignoring repeat event")
 		return
@@ -100,10 +102,19 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] Activity:%s (%d)", activity.Name, activity.ID)
 
+	// Update the summit record
+	err = summits.UpdateSummit(db, activity)
+	if err != nil {
+		log.Println("[ERROR] unable to update summit record:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[INFO] updated summit record for athlete %d", athlete.StravaAthleteID)
+
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(wclient, activity, trcal) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	update, msg := constructUpdate(wclient, activity, trcal, db) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -135,7 +146,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
+type descriptionContent struct {
+	Description string
+	Weather     *weather.WeatherInfo
+	Summit      *summits.ActivitySummit
+}
+
+func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService, db *gorm.DB) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -193,7 +210,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 			// We only want the first line if the description contains the app.erg.zone URL
 			if strings.Contains(activity.Description, "app.erg.zone") {
 				title = lines[0]
-				update.Description = "\n"
+				activity.Description = ""
 			}
 		}
 
@@ -261,17 +278,20 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
 	}
 
-	if w != nil {
-		wtr, err := execTemplate("weather.tmpl", w)
-		if err != nil {
-			log.Println("[ERROR] unable to parse weather template:", err)
-		}
+	summit, err := summits.GetSummitForActivity(db, activity)
+	if err != nil {
+		log.Println("[ERROR] unable to get summit:", err)
+	}
 
-		if activity.Description != "" && update.Description != "\n" {
-			update.Description = activity.Description + "\n\n"
-		}
-		update.Description += wtr
-		msg += " & added weather"
+	descriptionContent := descriptionContent{
+		Description: activity.Description,
+		Weather:     w,
+		Summit:      summit,
+	}
+
+	update.Description, err = execTemplate("description.tmpl", descriptionContent)
+	if err != nil {
+		log.Println("[ERROR] unable to parse description template:", err)
 	}
 
 	return &update, msg

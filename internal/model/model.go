@@ -19,6 +19,13 @@ type Summit struct {
 	gorm.Model
 	AthleteID int64
 	Year      int64
-	Run       int64
-	Bike      int64
+	Run       float64
+	Ride      float64
+}
+
+// ActivityContent represents the content of an activity
+type ActivityContent struct {
+	Description string
+	Weather     string
+	Summit      string
 }

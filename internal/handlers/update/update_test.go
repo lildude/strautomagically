@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 
-	err = db.AutoMigrate(&model.Athlete{})
+	err = db.AutoMigrate(&model.Athlete{}, &model.Summit{})
 	if err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
 	}
@@ -208,7 +208,7 @@ func TestConstructUpdate(t *testing.T) {
 			"zwift.json",
 		},
 		{
-			"set gear to bike",
+			"set gear to Ride",
 			&strava.UpdatableActivity{
 				GearID: "b10013574",
 			},
@@ -305,7 +305,7 @@ func TestConstructUpdate(t *testing.T) {
 			"set rowing title from first line of description",
 			&strava.UpdatableActivity{
 				Name:        "5x 1.5k w/ 5' Active RI",
-				Description: "\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+				Description: "\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
 			},
 			"row_title_from_first_line.json",
 		},
@@ -326,15 +326,60 @@ func TestConstructUpdate(t *testing.T) {
 			},
 			"virtualride.json",
 		},
+		{
+			"adds summit total for run",
+			&strava.UpdatableActivity{
+				Description: "Test run description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🦶⬆️ 1000m\n",
+			},
+			"summit_add_for_run.json",
+		},
+		{
+			"adds summit total for ride",
+			&strava.UpdatableActivity{
+				GearID:      "b10013574",
+				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🚴‍♂️⬆️ 1234m\n",
+			},
+			"summit_add_for_ride.json",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var a strava.Activity
 			var resp []byte
+			db := setupTestDB(t)
+			database.SetTestDB(db)
+
 			// TODO: Hacky AF - replace me
 			if strings.HasPrefix(tc.fixture, "trainerroad") {
 				resp, _ = os.ReadFile("testdata/trainerroad.ics")
+			}
+
+			if strings.HasPrefix(tc.fixture, "summit") {
+				// Read in the fixture file and unmarshal the JSON
+				resp, _ = os.ReadFile("testdata/" + tc.fixture)
+				err := json.Unmarshal(resp, &a)
+				if err != nil {
+					t.Fatalf("unexpected error parsing test input: %v", err)
+				}
+				runGain := 0.0
+				rideGain := 0.0
+				if a.Type == "Ride" {
+					rideGain = a.TotalElevationGain
+				}
+				if a.Type == "Run" {
+					runGain = a.TotalElevationGain
+				}
+
+				// Create a summit record for the test using the total_elevation_gain from the activity
+				summit := &model.Summit{
+					AthleteID: int64(1),
+					Year:      int64(a.StartDate.Year()),
+					Run:       runGain,
+					Ride:      rideGain,
+				}
+
+				db.Create(summit)
 			}
 
 			mockClient := &MockClient{
@@ -352,9 +397,9 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got, _ := constructUpdate(rc, &a, trcal)
+			got, _ := constructUpdate(rc, &a, trcal, db)
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("expected %+v, got %+v", tc.want, got)
+				t.Errorf("\nexpected %+v, \ngot %+v", tc.want, got)
 			}
 		})
 	}
