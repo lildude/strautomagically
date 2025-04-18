@@ -14,24 +14,24 @@ func TestCallbackHandler(t *testing.T) {
 		wantStatus  int
 	}{
 		{
-			"successful callback",
-			"hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=mytoken",
-			http.StatusOK,
+			name:        "Successful callback",
+			queryParams: "hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=mytoken",
+			wantStatus:  http.StatusOK,
 		},
 		{
-			"missing query param: hub.challenge",
-			"hub.mode=subscribe&hub.verify_token=mytoken",
-			http.StatusBadRequest,
+			name:        "missing query param: hub.challenge",
+			queryParams: "hub.mode=subscribe&hub.verify_token=mytoken",
+			wantStatus:  http.StatusBadRequest,
 		},
 		{
-			"missing query param: hub.verify_token",
-			"hub.mode=subscribe&hub.challenge=mychallenge",
-			http.StatusBadRequest,
+			name:        "missing query param: hub.verify_token",
+			queryParams: "hub.mode=subscribe&hub.challenge=mychallenge",
+			wantStatus:  http.StatusBadRequest,
 		},
 		{
-			"verify token mismatch",
-			"hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=wrong",
-			http.StatusBadRequest,
+			name:        "verify token mismatch",
+			queryParams: "hub.mode=subscribe&hub.challenge=mychallenge&hub.verify_token=wrong",
+			wantStatus:  http.StatusBadRequest,
 		},
 	}
 

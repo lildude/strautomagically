@@ -77,22 +77,22 @@ func TestAuthHandler(t *testing.T) {
 		want  int
 	}{
 		{
-			"invalid state",
-			"?state=invalid-state",
-			"",
-			http.StatusBadRequest,
+			name:  "Invalid state",
+			query: "?state=invalid-state",
+			body:  "",
+			want:  http.StatusBadRequest,
 		},
 		{
-			"valid state but no code",
-			"?state=test-state-token",
-			"",
-			http.StatusBadRequest,
+			name:  "Valid state but no code",
+			query: "?state=test-state-token",
+			body:  "",
+			want:  http.StatusBadRequest,
 		},
 		{
-			"valid state and code",
-			"?state=test-state-token&code=test-code",
-			"",
-			http.StatusFound,
+			name:  "Valid state and code",
+			query: "?state=test-state-token&code=test-code",
+			body:  "",
+			want:  http.StatusFound,
 		},
 	}
 
