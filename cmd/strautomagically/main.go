@@ -47,7 +47,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		return
 	} else {
-		stateToken := os.Getenv("STRAVA_ACCESS_TOKEN")
+		stateToken := os.Getenv("STRAVA_STATE_TOKEN")
 		url := strava.OauthConfig.AuthCodeURL(stateToken)
 		if _, err := w.Write([]byte(`<!DOCTYPE html>
 			<html>
