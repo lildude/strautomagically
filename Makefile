@@ -50,6 +50,6 @@ reset-auth-token:
 new-azure-creds:
 	az ad sp create-for-rbac --name "Strautomagically" --role contributor \
     --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically/providers/Microsoft.Web/sites/strautomagically \
-		--json-auth
+    --json-auth
 
 
