@@ -9,7 +9,7 @@
 - [x] move from Heroku to Azure function
 - [x] Deploy via actions
 - [ ] Add config to read from local.settings.json rather than .env - Viper might do the trick here https://github.com/spf13/viper though might be overkill.
-
+- [ ] Switch to OIDC auth: https://github.com/Azure/functions-action?tab=readme-ov-file#use-oidc-recommended
 
 
 # Hosting on Azure Functions
