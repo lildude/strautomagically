@@ -1,3 +1,5 @@
+// Package database provides functions to initialize and manage the database connection
+// and perform schema migrations for the application.
 package database
 
 import (
@@ -9,14 +11,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// SetTestDB sets the test database instance for unit tests
+// SetTestDB sets the test database instance for unit tests.
 var testDB *gorm.DB
 
 func SetTestDB(db *gorm.DB) {
 	testDB = db
 }
 
-// InitDB initializes the database connection and performs schema migration
+// InitDB initializes the database connection and performs schema migration.
 func InitDB() (*gorm.DB, error) {
 	if testDB != nil {
 		return testDB, nil
