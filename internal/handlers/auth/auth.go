@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/lildude/strautomagically/internal/cache"
+	"github.com/jackc/pgtype"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
-	"golang.org/x/oauth2"
 )
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,27 +21,16 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := r.Form.Get("state")
-	stateToken := os.Getenv("STATE_TOKEN")
-	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	stateToken := os.Getenv("STRAVA_STATE_TOKEN")
+
+	db, err := database.InitDB()
 	if err != nil {
-		log.Println("[ERROR] unable to create redis cache:", err)
+		log.Println("[ERROR] unable to connect to database:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	authToken := &oauth2.Token{}
-	che.GetJSON("strava_auth_token", &authToken) //nolint:gosec // We don't care if this fails
-
-	if state == "" {
-		if authToken.AccessToken == "" {
-			u := strava.OauthConfig.AuthCodeURL(stateToken)
-			log.Println("[INFO] redirecting to", u)
-			http.Redirect(w, r, u, http.StatusFound)
-		} else {
-			http.Redirect(w, r, "/start", http.StatusFound)
-		}
-		return
-	}
+	var athlete model.Athlete
 
 	if state != stateToken {
 		http.Error(w, "state invalid", http.StatusBadRequest)
@@ -58,20 +48,45 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	athlete, ok := token.Extra("athlete").(map[string]interface{})
+	athleteInfo, ok := token.Extra("athlete").(map[string]interface{})
 	if !ok {
-		log.Println("[ERROR] unable to get athete info", err)
+		log.Println("[ERROR] unable to get athlete info", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = che.SetJSON("strava_auth_token", token)
-	if err != nil {
-		log.Println("[ERROR]", err)
+	// Insert or update the athlete in the database
+	// Check if the athlete already exists
+	err = db.Where("strava_athlete_id = ?", int64(athleteInfo["id"].(float64))).First(&athlete).Error
+	if err != nil && err.Error() != "record not found" {
+		log.Println("[ERROR] unable to find athlete:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Println("[INFO] successfully authenticated:", athlete["username"])
+	if err == nil {
+		// Athlete exists, update the record
+		if err := athlete.StravaAuthToken.Set(token); err != nil {
+			log.Println("[ERROR] failed to set StravaAuthToken:", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		db.Save(&athlete)
+		log.Println("[INFO] successfully updated athlete:", athleteInfo["username"])
+	} else {
+		// Athlete does not exist, create a new record
+		athlete.StravaAuthToken = pgtype.JSONB{}
+		if err := athlete.StravaAuthToken.Set(token); err != nil {
+			log.Println("[ERROR] failed to set StravaAuthToken:", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+		athlete.StravaAthleteID = int64(athleteInfo["id"].(float64))
+		athlete.StravaAthleteName = athleteInfo["username"].(string)
+		athlete.LastActivityID = 0
+
+		db.Create(&athlete)
+		log.Println("[INFO] successfully authenticated:", athleteInfo["username"])
+	}
 
 	// Subscribe to the activity stream - should this be here?
 	ok, err = Subscribe()

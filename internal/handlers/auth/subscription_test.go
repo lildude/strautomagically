@@ -18,14 +18,14 @@ func TestSubscribe(t *testing.T) {
 		want bool
 	}{
 		{
-			"successfully subscribed",
-			"no_subscriptions.json",
-			true,
+			name: "Successfully subscribed",
+			mock: "no_subscriptions.json",
+			want: true,
 		},
 		{
-			"failed to subscribe",
-			"subscriptions.json",
-			false,
+			name: "Failed to subscribe",
+			mock: "subscriptions.json",
+			want: false,
 		},
 	}
 
@@ -57,14 +57,14 @@ func TestExistingSubscription(t *testing.T) {
 		want bool
 	}{
 		{
-			"subscription exists",
-			"subscriptions.json",
-			true,
+			name: "Subscription exists",
+			mock: "subscriptions.json",
+			want: true,
 		},
 		{
-			"subscription does not exist",
-			"no_subscriptions.json",
-			false,
+			name: "Subscription does not exist",
+			mock: "no_subscriptions.json",
+			want: false,
 		},
 	}
 

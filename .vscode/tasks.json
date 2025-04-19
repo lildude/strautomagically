@@ -4,12 +4,12 @@
   "cwd": "${workspaceFolder}",
   "tasks": [
     {
-      "label": "run all tests",
+      "label": "Run all tests",
       "command": "make test",
       "group": "test"
     },
     {
-      "label": "run tests in file",
+      "label": "Run tests in file",
       "command": "go",
       "args": [
         "test",
@@ -31,6 +31,11 @@
     {
       "label": "Start server",
       "command": "make start",
+      "group": "build"
+    },
+    {
+      "label": "Run server",
+      "command": "make run",
       "group": "build"
     },
     {

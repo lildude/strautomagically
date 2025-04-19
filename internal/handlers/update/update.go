@@ -11,16 +11,18 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -44,57 +46,51 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	db, err := database.InitDB()
 	if err != nil {
-		log.Println("[ERROR] unable to create redis cache:", err)
+		log.Println("[ERROR] unable to connect to database:", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// See if we've seen this activity before
-	aid, err := rcache.Get("strava_activity")
-	if err != nil {
-		log.Println("[ERROR] unable to get activity id from cache:", err)
-	}
-	// Convert aid to int
-	s, _ := aid.(string)
-	aidInt, _ := strconv.ParseInt(s, 10, 64)
+	var athlete model.Athlete
+	db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID)
 
-	if os.Getenv("ENV") != "dev" && aidInt == webhook.ObjectID {
+	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
 		log.Println("[INFO] ignoring repeat event")
 		return
 	}
 
 	// Create the OAuth http.Client
-	// ctx := context.Background()
 	authToken := &oauth2.Token{}
-	err = rcache.GetJSON("strava_auth_token", &authToken)
-	if err != nil {
-		log.Println("[ERROR] unable to get token:", err)
+	if err := athlete.StravaAuthToken.AssignTo(authToken); err != nil {
+		log.Println("[ERROR] unable to assign Strava auth token:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	if authToken.AccessToken == "" {
+		log.Println("[ERROR] no access token found")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// The Oauth2 library handles refreshing the token if it's expired.
+	authToken = &oauth2.Token{AccessToken: authToken.AccessToken}
 	ts := strava.OauthConfig.TokenSource(r.Context(), authToken)
 	tc := oauth2.NewClient(r.Context(), ts)
-	surl, _ := url.Parse(strava.BaseURL)
 
 	newToken, err := ts.Token()
 	if err != nil {
 		log.Println("[ERROR] unable to refresh token:", err)
 		return
 	}
+
 	if newToken.AccessToken != authToken.AccessToken {
-		err = rcache.SetJSON("strava_auth_token", newToken)
-		if err != nil {
-			log.Println("[ERROR] unable to store token:", err)
-			return
-		}
+		db.Model(&athlete).Update("strava_auth_token", newToken.AccessToken)
 		log.Println("[INFO] updated token")
 	}
 
+	surl, _ := url.Parse(strava.BaseURL)
 	sc := client.NewClient(surl, tc)
 
 	activity, err := strava.GetActivity(sc, webhook.ObjectID) //nolint:contextcheck // TODO: pass context rather then generate in the package.
@@ -106,10 +102,19 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[INFO] Activity:%s (%d)", activity.Name, activity.ID)
 
+	// Update the summit record
+	err = summits.UpdateSummit(db, activity)
+	if err != nil {
+		log.Println("[ERROR] unable to update summit record:", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[INFO] updated summit record for athlete %d", athlete.StravaAthleteID)
+
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(wclient, activity, trcal) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	update, msg := constructUpdate(wclient, activity, trcal, db) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -128,21 +133,26 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		log.Printf("[INFO] Activity:%s (%d): %s", updated.Name, updated.ID, msg)
-
-		// Cache activity ID if we've succeeded
-		err = rcache.Set("strava_activity", webhook.ObjectID)
-		if err != nil {
-			log.Println("[ERROR] unable to cache activity id:", err)
-		}
 	}
 
+	// Update the athlete's last activity ID
+	db.Model(&athlete).Updates(map[string]interface{}{
+		"last_activity_id": webhook.ObjectID,
+	})
+
 	w.WriteHeader(http.StatusOK)
-	if _, err = w.Write([]byte(`success`)); err != nil {
+	if _, err = w.Write([]byte(``)); err != nil {
 		log.Println("[ERROR]", err)
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
+type descriptionContent struct {
+	Description string
+	Weather     *weather.WeatherInfo
+	Summit      *summits.ActivitySummit
+}
+
+func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService, db *gorm.DB) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -200,7 +210,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 			// We only want the first line if the description contains the app.erg.zone URL
 			if strings.Contains(activity.Description, "app.erg.zone") {
 				title = lines[0]
-				update.Description = "\n"
+				activity.Description = ""
 			}
 		}
 
@@ -268,17 +278,20 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
 	}
 
-	if w != nil {
-		wtr, err := execTemplate("weather.tmpl", w)
-		if err != nil {
-			log.Println("[ERROR] unable to parse weather template:", err)
-		}
+	summit, err := summits.GetSummitForActivity(db, activity)
+	if err != nil {
+		log.Println("[ERROR] unable to get summit:", err)
+	}
 
-		if activity.Description != "" && update.Description != "\n" {
-			update.Description = activity.Description + "\n\n"
-		}
-		update.Description += wtr
-		msg += " & added weather"
+	descriptionContent := descriptionContent{
+		Description: activity.Description,
+		Weather:     w,
+		Summit:      summit,
+	}
+
+	update.Description, err = execTemplate("description.tmpl", descriptionContent)
+	if err != nil {
+		log.Println("[ERROR] unable to parse description template:", err)
 	}
 
 	return &update, msg

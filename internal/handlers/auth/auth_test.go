@@ -8,9 +8,27 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
+	"github.com/jackc/pgtype"
 	"github.com/jarcoal/httpmock"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 )
+
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to connect to test database: %v", err)
+	}
+
+	err = db.AutoMigrate(&model.Athlete{})
+	if err != nil {
+		t.Fatalf("failed to migrate test database: %v", err)
+	}
+
+	return db
+}
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
@@ -39,10 +57,18 @@ func TestAuthHandler(t *testing.T) {
 	httpmock.RegisterResponder("POST", "https://www.strava.com/api/v3/push_subscriptions",
 		httpmock.NewStringResponder(200, `{"id":1}`))
 
-	r := miniredis.RunT(t)
-	defer r.Close()
-	t.Setenv("REDIS_URL", "redis://"+r.Addr())
-	t.Setenv("STATE_TOKEN", "test-state-token")
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+
+	tokenJSON := pgtype.JSONB{}
+	tokenJSON.Set(map[string]string{"access_token": "123456789"})
+	db.Create(&model.Athlete{
+		StravaAthleteID:   1,
+		StravaAthleteName: "test",
+		StravaAuthToken:   tokenJSON,
+	})
+
+	t.Setenv("STRAVA_STATE_TOKEN", "test-state-token")
 
 	tests := []struct {
 		name  string
@@ -51,28 +77,22 @@ func TestAuthHandler(t *testing.T) {
 		want  int
 	}{
 		{
-			"no state redirects to strava",
-			"",
-			"",
-			http.StatusFound,
+			name:  "Invalid state",
+			query: "?state=invalid-state",
+			body:  "",
+			want:  http.StatusBadRequest,
 		},
 		{
-			"invalid state",
-			"?state=invalid-state",
-			"",
-			http.StatusBadRequest,
+			name:  "Valid state but no code",
+			query: "?state=test-state-token",
+			body:  "",
+			want:  http.StatusBadRequest,
 		},
 		{
-			"valid state but no code",
-			"?state=test-state-token",
-			"",
-			http.StatusBadRequest,
-		},
-		{
-			"valid state and code",
-			"?state=test-state-token&code=test-code",
-			"",
-			http.StatusFound,
+			name:  "Valid state and code",
+			query: "?state=test-state-token&code=test-code",
+			body:  "",
+			want:  http.StatusFound,
 		},
 	}
 

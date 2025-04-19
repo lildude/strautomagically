@@ -1,7 +1,7 @@
 # Strautomagically
 
 Webhook endpoint that runs on Azure Functions to do stuff automagically to my Strava activities as they appear.
-Inspired by [Klimat](https://klimat.app/) and [Strautomator](https://strautomator.com).
+Inspired by [Klimat][klimat], [Strautomator][strautomator] and [Summit Bag][summitbag]]
 
 ## 🚧 WIP 🚧
 
@@ -15,11 +15,11 @@ If I spot a fork and find something I like that you've done, I will pinch it �
 
 ### Prerequisites
 
-You will need to create an API application in [your settings on Strava](https://www.strava.com/settings/api) and take note of the client ID and secret.
-If you are running this locally, you will need to set the callback domain to `localhost:8080`, or your ngrok URL if you want to use [ngrok](https://ngrok.com/).
-You will also need a Redis database which is used to store the authentication and refresh tokens.
-I use a free database from [Redis](https://redis.com/try-free/) as it's cheaper than Azure 😜.
-Optional: If you want to add weather information to your entries, you will need to register for a free [OpenWeather](https://openweathermap.org) account and obtain an API key.
+You will need to create an API application in [your settings on Strava][strava-api-settings] and take note of the client ID and secret.
+If you are running this locally, you will need to set the callback domain to `localhost:8080`, or your ngrok URL if you want to use [ngrok][ngrok].
+You will also need a Postgres database which is used to store the authentication and refresh tokens.
+I use a free database from [Aiven][aiven] as it's cheaper than Azure 😜.
+Optional: If you want to add weather information to your entries, you will need to register for a free [OpenWeather][openweatermap] account and obtain an API key.
 
 ### Running Locally
 
@@ -63,10 +63,20 @@ Optional: If you want to add weather information to your entries, you will need 
 
     ... or ...
     
-  - in [VSCode](https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-other?tabs=go%2Clinux#create-the-function-app-in-azure)
+  - in [VSCode][]
   
-2. Create an Azure Service Principal for RBAC for the deployment credentials. Follow [these](https://github.com/Azure/functions-action/blob/d4e7f5d24dc958f6904ffd095fe5033d474abe49/README.md#using-azure-service-principal-for-rbac-as-deployment-credential) instructions.
+2. Create an Azure Service Principal for RBAC for the deployment credentials. Follow [these][azure-sp] instructions.
 3. Add the configuration variables from the `.env` file above to the Azure function configuration, or if you added them to `local.settings.json` too, use the VSCode Azure Functions extension to upload them.  
 4. Deploy using your preferred method - either manually from the Azure Functions extension in VSCode or using the GitHub workflow by merging a PR into `main` or pushing directly to main.
 5. Visit the `STRAVA_REDIRECT_URI` URL and authorize the application with Strava.
 6. Go for a run.
+
+[klimat]: https://klimat.app/
+[strautomator]: https://strautomator.com
+[summitbag]: https://summitbag.com
+[strava-api-settings]: https://www.strava.com/settings/api
+[ngrok]: https://ngrok.com/
+[aiven]: https://aiven.io/
+[openweathermap]: https://openweathermap.org
+[vscode]: https://learn.microsoft.com/en-us/azure/azure-functions/create-first-function-vs-code-other?tabs=go%2Clinux#create-the-function-app-in-azure
+[azure-sp]: https://github.com/Azure/functions-action/blob/d4e7f5d24dc958f6904ffd095fe5033d474abe49/README.md#using-azure-service-principal-for-rbac-as-deployment-credential
