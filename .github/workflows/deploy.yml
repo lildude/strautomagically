@@ -5,30 +5,30 @@ on:
   workflow_run:
     workflows: [Test]
     types: [completed]
-    branches: [main]
+    # branches: [main]
 
 jobs:
   deploy:
     name: Build & Deploy to Staging
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # Required for OIDC
-      contents: read # Required for actions/checkout
+      id-token: write
+      contents: read
     environment: Staging
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
     - uses: actions/checkout@v3
 
     - name: Build
-      if: github.ref == 'refs/heads/main'
+      # if: github.ref == 'refs/heads/main'
       run: make build_azure
 
     - name: Login to Azure
       uses: azure/login@v2
       with:
-        client-id: ${{ vars.AZURE_CLIENT_ID }} # Required to log in with OIDC
-        tenant-id`: ${{ vars.AZURE_TENANT_ID }} # Required to log in with OIDC
-        subscript`ion-id: ${{ vars.AZURE_SUBSCRIPTION_ID }} # Required to log in with OIDC
+        client-id: ${{ vars.AZURE_CLIENT_ID }}
+        tenant-id`: ${{ vars.AZURE_TENANT_ID }}
+        subscript`ion-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
     - name: 'Deploy to Staging'
       uses: Azure/functions-action@v1
@@ -59,16 +59,17 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
-      id-token: write # Required for OIDC
-      contents: read # Required for actions/checkout
+      id-token: write
+      contents: read
     environment: Production
+    if: github.ref == 'refs/heads/main'
     steps:
     - name: Login to Azure
       uses: azure/login@v2
       with:
-        client-id: ${{ vars.AZURE_CLIENT_ID }} # Required to log in with OIDC
-        tenant-id: ${{ vars.AZURE_TENANT_ID }} # Required to log in with OIDC
-        subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }} # Required to log in with OIDC
+        client-id: ${{ vars.AZURE_CLIENT_ID }}
+        tenant-id: ${{ vars.AZURE_TENANT_ID }}
+        subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
     - name: Swap Slots
       run: az functionapp deployment slot swap -s staging -n ${{ secrets.FUNCTION_APP }} -g ${{ secrets.FUNCTION_APP }}
