@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestCallbackHandler(t *testing.T) {
@@ -67,4 +69,8 @@ func TestCallbackHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func init() {
+	logrus.SetOutput(io.Discard)
 }

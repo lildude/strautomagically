@@ -2,12 +2,12 @@ package admin
 
 import (
 	"database/sql"
-	"log"
 	"net/http"
 
 	"github.com/lildude/strautomagically/internal/auth"
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/sessions"
+	"github.com/sirupsen/logrus"
 )
 
 // ShowLoginForm displays the admin login page.
@@ -32,13 +32,13 @@ func HandleLogin(db *sql.DB) http.HandlerFunc {
 
 		adminUser, err := database.GetAdminUser(db, username)
 		if err != nil {
-			log.Printf("Error getting admin user: %v", err)
+			logrus.WithError(err).Errorf("Error getting admin user")
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		if adminUser == nil || !auth.CheckPasswordHash(password, adminUser.PasswordHash) {
-			log.Printf("Login failed for user: %s", username)
+			logrus.Warnf("Login failed for user: %s", username)
 			// Use the templates variable defined in dashboard.go
 			err := templates.ExecuteTemplate(w, "login.html", map[string]string{"Error": "Invalid credentials"})
 			if err != nil {

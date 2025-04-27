@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"io"
 	"os"
 	"testing"
 
 	"github.com/jarcoal/httpmock"
+	"github.com/sirupsen/logrus"
 )
 
 func TestSubscribe(t *testing.T) {
@@ -83,4 +85,8 @@ func TestExistingSubscription(t *testing.T) {
 }
 
 func TestUnsubscribe(t *testing.T) {
+}
+
+func init() {
+	logrus.SetOutput(io.Discard)
 }

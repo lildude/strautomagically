@@ -2,7 +2,6 @@ package auth
 
 import (
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"github.com/jarcoal/httpmock"
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -32,7 +32,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()

@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 var baseURL = &url.URL{Scheme: "http", Host: "example.com", Path: "/"}
@@ -276,6 +278,8 @@ func setup() (client *Client, mux *http.ServeMux, teardown func()) {
 
 	surl, _ := url.Parse(server.URL + "/")
 	c := NewClient(surl, nil)
+
+	logrus.SetOutput(io.Discard)
 
 	return c, mux, server.Close
 }

@@ -3,10 +3,9 @@
 package summits
 
 import (
-	"log"
-
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -24,7 +23,7 @@ func UpdateSummit(db *gorm.DB, activity *strava.Activity) error {
 	// Use FirstOrCreate to find the record or create it if it doesn't exist
 	result := db.Where(model.Summit{AthleteID: athleteID, Year: int64(activityYear)}).FirstOrCreate(&summit)
 	if result.Error != nil {
-		log.Printf("[ERROR] Failed to find or create summit record: %v", result.Error)
+		logrus.Errorf("Failed to find or create summit record: %v", result.Error)
 		return result.Error
 	}
 
@@ -45,11 +44,11 @@ func UpdateSummit(db *gorm.DB, activity *strava.Activity) error {
 	if updated {
 		saveResult := db.Save(&summit)
 		if saveResult.Error != nil {
-			log.Printf("[ERROR] Failed to save summit record: %v", saveResult.Error)
+			logrus.Errorf("Failed to save summit record: %v", saveResult.Error)
 			return saveResult.Error
 		}
 	} else {
-		log.Printf("[DEBUG] No update needed for summit record.")
+		logrus.Debug("No update needed for summit record.")
 	}
 
 	return nil

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -20,6 +19,7 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -40,7 +40,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -137,7 +137,7 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	rc, mux, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {

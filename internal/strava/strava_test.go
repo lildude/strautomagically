@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/sirupsen/logrus"
 )
 
 func TestGetActivity(t *testing.T) {
@@ -41,7 +41,7 @@ func TestGetActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -89,7 +89,7 @@ func TestUpdateActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

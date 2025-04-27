@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"github.com/lildude/strautomagically/internal/strava"
 	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
 )
@@ -34,7 +34,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, _ := io.ReadAll(r.Body)
 	if err := json.Unmarshal(body, &webhook); err != nil {
-		log.Println("[ERROR] unable to unmarshal webhook payload:", err)
+		logrus.WithError(err).Error("Unable to unmarshal webhook payload")
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -42,13 +42,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	// We only react to new activities for now
 	if webhook.AspectType != "create" {
 		w.WriteHeader(http.StatusOK)
-		log.Println("[INFO] ignoring non-create webhook")
+		logrus.Info("Ignoring non-create webhook")
 		return
 	}
 
 	db, err := database.InitDB()
 	if err != nil {
-		log.Println("[ERROR] unable to connect to database:", err)
+		logrus.WithError(err).Error("Unable to connect to database")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -58,19 +58,19 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
-		log.Println("[INFO] ignoring repeat event")
+		logrus.Info("Ignoring repeat event")
 		return
 	}
 
 	// Create the OAuth http.Client
 	authToken := &oauth2.Token{}
 	if err := athlete.StravaAuthToken.AssignTo(authToken); err != nil {
-		log.Println("[ERROR] unable to assign Strava auth token:", err)
+		logrus.WithError(err).Error("Unable to assign Strava auth token")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	if authToken.AccessToken == "" {
-		log.Println("[ERROR] no access token found")
+		logrus.Error("No access token found")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -81,13 +81,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	newToken, err := ts.Token()
 	if err != nil {
-		log.Println("[ERROR] unable to refresh token:", err)
+		logrus.WithError(err).Error("Unable to refresh token")
 		return
 	}
 
 	if newToken.AccessToken != authToken.AccessToken {
 		db.Model(&athlete).Update("strava_auth_token", newToken.AccessToken)
-		log.Println("[INFO] updated token")
+		logrus.Info("Updated token")
 	}
 
 	surl, _ := url.Parse(strava.BaseURL)
@@ -95,21 +95,21 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	activity, err := strava.GetActivity(sc, webhook.ObjectID) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 	if err != nil {
-		log.Println("[ERROR] unable to get activity:", err)
+		logrus.WithError(err).Error("Unable to get activity")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[INFO] Activity:%s (%d)", activity.Name, activity.ID)
+	logrus.Infof("Activity:%s (%d)", activity.Name, activity.ID)
 
 	// Update the summit record
 	err = summits.UpdateSummit(db, activity)
 	if err != nil {
-		log.Println("[ERROR] unable to update summit record:", err)
+		logrus.WithError(err).Error("Unable to update summit record")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("[INFO] updated summit record for athlete %d", athlete.StravaAthleteID)
+	logrus.Infof("Updated summit record for athlete %d", athlete.StravaAthleteID)
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
@@ -118,8 +118,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
-		log.Printf("[DEBUG] update: %+v\n", update)
-		log.Println("[DEBUG] message:", msg)
+		logrus.Debugf("update: %+v\n", update)
+		logrus.Debug("message:", msg)
 		return
 	}
 
@@ -127,12 +127,12 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update) //nolint:contextcheck // TODO: pass context rather then generate in the package.
 		if err != nil {
-			log.Println("[ERROR] unable to update activity:", err)
+			logrus.WithError(err).Error("Unable to update activity")
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("[INFO] Activity:%s (%d): %s", updated.Name, updated.ID, msg)
+		logrus.Infof("Activity:%s (%d): %s", updated.Name, updated.ID, msg)
 	}
 
 	// Update the athlete's last activity ID
@@ -142,7 +142,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(``)); err != nil {
-		log.Println("[ERROR]", err)
+		logrus.WithError(err).Error("Unable to write response")
 	}
 }
 
@@ -175,15 +175,15 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		if !strings.HasPrefix(activity.Name, "TR: ") {
 			event, err := trcal.GetCalendarEvent(activity.StartDate)
 			if err != nil {
-				log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
+				logrus.WithError(err).Error("Unable to get TrainerRoad calendar event")
 			}
 
 			// We assume if there is an event for the day, the activity is the same
 			if event != nil && event.Summary != "" {
-				log.Println("[INFO] found TrainerRoad calendar event:", event.Summary)
+				logrus.Infof("Found TrainerRoad calendar event: %s", event.Summary)
 				title = "TR: " + event.Summary
 			} else {
-				log.Println("[INFO] no TrainerRoad calendar event found")
+				logrus.Info("No TrainerRoad calendar event found")
 			}
 		}
 
@@ -201,7 +201,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 			update.Name = title
 		}
 
-		msg = "prefixed name of ride with TR and set gear"
+		msg = "Prefixed name of ride with TR and set gear"
 
 	case "Rowing":
 		// Workouts created in ErgZone will have the name in the first line of the description
@@ -280,7 +280,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 
 	summit, err := summits.GetSummitForActivity(db, activity)
 	if err != nil {
-		log.Println("[ERROR] unable to get summit:", err)
+		logrus.WithError(err).Error("Unable to get summit")
 	}
 
 	descriptionContent := descriptionContent{
@@ -291,7 +291,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 
 	update.Description, err = execTemplate("description.tmpl", descriptionContent)
 	if err != nil {
-		log.Println("[ERROR] unable to parse description template:", err)
+		logrus.WithError(err).Error("Unable to parse description template")
 	}
 
 	return &update, msg

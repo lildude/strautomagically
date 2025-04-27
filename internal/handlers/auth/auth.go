@@ -2,7 +2,6 @@
 package auth
 
 import (
-	"log"
 	"net/http"
 	"os"
 
@@ -10,12 +9,13 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/sirupsen/logrus"
 )
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		log.Println("[ERROR] unable to parse form:", err)
+		logrus.WithError(err).Error("Unable to parse form")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -25,7 +25,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	db, err := database.InitDB()
 	if err != nil {
-		log.Println("[ERROR] unable to connect to database:", err)
+		logrus.WithError(err).Error("Unable to connect to database")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -43,14 +43,14 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := strava.OauthConfig.Exchange(r.Context(), code)
 	if err != nil {
-		log.Println("[ERROR]", err)
+		logrus.WithError(err).Error("Failed to exchange OAuth code")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	athleteInfo, ok := token.Extra("athlete").(map[string]interface{})
 	if !ok {
-		log.Println("[ERROR] unable to get athlete info", err)
+		logrus.Error("Unable to get athlete info", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -59,24 +59,24 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the athlete already exists
 	err = db.Where("strava_athlete_id = ?", int64(athleteInfo["id"].(float64))).First(&athlete).Error
 	if err != nil && err.Error() != "record not found" {
-		log.Println("[ERROR] unable to find athlete:", err)
+		logrus.WithError(err).Error("Unable to find athlete")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	if err == nil {
 		// Athlete exists, update the record
 		if err := athlete.StravaAuthToken.Set(token); err != nil {
-			log.Println("[ERROR] failed to set StravaAuthToken:", err)
+			logrus.WithError(err).Error("failed to set StravaAuthToken")
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 		db.Save(&athlete)
-		log.Println("[INFO] successfully updated athlete:", athleteInfo["username"])
+		logrus.Infof("Successfully updated athlete: %s", athleteInfo["username"])
 	} else {
 		// Athlete does not exist, create a new record
 		athlete.StravaAuthToken = pgtype.JSONB{}
 		if err := athlete.StravaAuthToken.Set(token); err != nil {
-			log.Println("[ERROR] failed to set StravaAuthToken:", err)
+			logrus.WithError(err).Error("Failed to set StravaAuthToken")
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -85,17 +85,17 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		athlete.LastActivityID = 0
 
 		db.Create(&athlete)
-		log.Println("[INFO] successfully authenticated:", athleteInfo["username"])
+		logrus.Infof("Successfully authenticated: %s", athleteInfo["username"])
 	}
 
 	// Subscribe to the activity stream - should this be here?
 	ok, err = Subscribe()
 	if !ok {
-		log.Println("[ERROR] failed to subscribe to strava webhook:", err)
+		logrus.WithError(err).Error("Failed to subscribe to strava webhook")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Println("[INFO] successfully subscribed to Strava activity feed")
+	logrus.Info("Successfully subscribed to Strava activity feed")
 
 	http.Redirect(w, r, "/start", http.StatusFound)
 }

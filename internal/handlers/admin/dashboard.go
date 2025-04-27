@@ -3,12 +3,12 @@ package admin
 import (
 	"encoding/json"
 	"html/template"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/jackc/pgtype"
 	"github.com/lildude/strautomagically/internal/database"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -27,14 +27,14 @@ func ShowDashboard(gormDB *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		athletes, err := database.GetAllAthletes(gormDB)
 		if err != nil {
-			log.Printf("Error getting athletes: %v", err)
+			logrus.WithError(err).Error("Error getting athletes")
 			http.Error(w, "Failed to load athletes", http.StatusInternalServerError)
 			return
 		}
 
 		summits, err := database.GetAllSummits(gormDB)
 		if err != nil {
-			log.Printf("Error getting summits: %v", err)
+			logrus.WithError(err).Error("Error getting summits")
 			http.Error(w, "Failed to load summits", http.StatusInternalServerError)
 			return
 		}
@@ -104,7 +104,7 @@ func HandleAthleteUpdate(gormDB *gorm.DB) http.HandlerFunc {
 			}
 			err = tokenJSON.Set([]byte(authTokenJSON))
 			if err != nil {
-				log.Printf("Error setting StravaAuthToken JSONB for athlete %d: %v", id, err)
+				logrus.WithError(err).Errorf("Error setting StravaAuthToken JSONB for athlete %d", id)
 				http.Redirect(w, r, "/admin?error=Failed+to+process+Strava+Auth+Token", http.StatusSeeOther)
 				return
 			}
@@ -114,7 +114,7 @@ func HandleAthleteUpdate(gormDB *gorm.DB) http.HandlerFunc {
 			err = tokenJSON.Set([]byte("{}"))
 			if err != nil {
 				// This should ideally not fail for "{}"
-				log.Printf("Error setting empty StravaAuthToken JSONB for athlete %d: %v", id, err)
+				logrus.WithError(err).Errorf("Error setting empty StravaAuthToken JSONB for athlete %d", id)
 				http.Redirect(w, r, "/admin?error=Failed+to+process+empty+Strava+Auth+Token", http.StatusSeeOther)
 				return
 			}
@@ -123,7 +123,7 @@ func HandleAthleteUpdate(gormDB *gorm.DB) http.HandlerFunc {
 		// Fetch the existing athlete to update
 		athlete, err := database.GetAthleteByID(gormDB, uint(id))
 		if err != nil || athlete == nil {
-			log.Printf("Error finding athlete %d for update: %v", id, err)
+			logrus.WithError(err).Errorf("Error finding athlete %d for update", id)
 			http.Redirect(w, r, "/admin?error=Athlete+not+found+for+update", http.StatusSeeOther)
 			return
 		}
@@ -135,7 +135,7 @@ func HandleAthleteUpdate(gormDB *gorm.DB) http.HandlerFunc {
 
 		err = database.UpdateAthlete(gormDB, athlete)
 		if err != nil {
-			log.Printf("Error updating athlete %d: %v", id, err)
+			logrus.WithError(err).Errorf("Error updating athlete %d", id)
 			http.Redirect(w, r, "/admin?error=Failed+to+update+athlete", http.StatusSeeOther)
 			return
 		}
@@ -183,7 +183,7 @@ func HandleSummitUpdate(gormDB *gorm.DB) http.HandlerFunc {
 		// Fetch the existing summit to update
 		summit, err := database.GetSummitByID(gormDB, uint(id))
 		if err != nil || summit == nil {
-			log.Printf("Error finding summit %d for update: %v", id, err)
+			logrus.WithError(err).Errorf("Error finding summit %d for update", id)
 			http.Redirect(w, r, "/admin?error=Summit+record+not+found+for+update", http.StatusSeeOther)
 			return
 		}
@@ -194,7 +194,7 @@ func HandleSummitUpdate(gormDB *gorm.DB) http.HandlerFunc {
 
 		err = database.UpdateSummit(gormDB, summit)
 		if err != nil {
-			log.Printf("Error updating summit %d: %v", id, err)
+			logrus.WithError(err).Errorf("Error updating summit %d", id)
 			http.Redirect(w, r, "/admin?error=Failed+to+update+summit+record", http.StatusSeeOther)
 			return
 		}

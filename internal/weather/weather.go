@@ -4,7 +4,6 @@ package weather
 import (
 	"context"
 	"fmt"
-	"log"
 	"math"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 
 	goaqi "github.com/lildude/go-aqi"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -213,7 +213,7 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 	p := pollution{}
 	r, err := c.Do(req, &p)
 	if err != nil {
-		log.Println("[ERROR] Failed to get pollution: ", err)
+		logrus.Errorf("Failed to get pollution: %v", err)
 		return aqi
 	}
 	defer r.Body.Close()

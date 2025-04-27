@@ -3,7 +3,6 @@ package weather
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/sirupsen/logrus"
 )
 
 func TestGetWeather(t *testing.T) {
@@ -82,7 +82,7 @@ func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	got, err := getWeather(rc, 0, 0, 0)
 	if err == nil {
@@ -292,7 +292,7 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	logrus.SetOutput(io.Discard)
 
 	latIn := 51.509865
 	lonIn := -0.118092

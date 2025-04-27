@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/sirupsen/logrus"
 )
 
 // TODO: Rewrite me as I'm a hacky mess.
@@ -18,17 +19,17 @@ func existingSubscription() bool {
 		os.Getenv("STRAVA_CLIENT_SECRET"))
 	resp, err := http.Get(u) //nolint:gosec,noctx // TODO: Fix this.
 	if err != nil {
-		log.Println("[INFO] GET strava /push_subscriptions:", err)
+		logrus.WithError(err).Info("GET strava /push_subscriptions")
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Println("[ERROR] failed to read push_subscriptions body:", err)
+		logrus.WithError(err).Error("Failed to read push_subscriptions body")
 	}
 	var subs []map[string]interface{}
 	if err := json.Unmarshal(body, &subs); err != nil {
-		log.Println("[ERROR]", err)
+		logrus.WithError(err).Error("Failed to unmarshal push_subscriptions body")
 	}
 	if len(subs) == 0 {
 		return false

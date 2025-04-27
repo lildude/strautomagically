@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/lildude/strautomagically/internal/handlers/update"
 	"github.com/lildude/strautomagically/internal/middleware"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/sirupsen/logrus"
 
 	// Autoloads .env file to supply environment variables.
 	_ "github.com/joho/godotenv/autoload"
@@ -24,11 +24,11 @@ func main() {
 	// Database setup
 	gormDB, err := database.InitDB() // Use InitDB which returns *gorm.DB
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		logrus.Fatalf("Failed to connect to database: %v", err)
 	}
 	sqlDB, err := gormDB.DB() // Get the underlying *sql.DB
 	if err != nil {
-		log.Fatalf("Failed to get underlying sql.DB: %v", err)
+		logrus.Fatalf("Failed to get underlying sql.DB: %v", err)
 	}
 	// Note: We don't defer sqlDB.Close() here because gorm manages the connection pool.
 	// Gorm's Close() method handles closing the underlying connection if necessary.
@@ -41,10 +41,10 @@ func main() {
 	adminPass := os.Getenv("ADMIN_PASSWORD")
 	if adminPass == "" {
 		adminPass = "password" // Change this default!
-		log.Println("Warning: ADMIN_PASSWORD not set, using default 'password'. Set this environment variable.")
+		logrus.Warn("ADMIN_PASSWORD not set, using default 'password'. Set this environment variable.")
 	}
 	if err := database.InitAdminUser(sqlDB, adminUser, adminPass); err != nil {
-		log.Fatalf("Failed to initialize admin user: %v", err)
+		logrus.Fatalf("Failed to initialize admin user: %v", err)
 	}
 
 	// HTTP Server setup
@@ -87,9 +87,9 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("Starting server on port %s", port)
+	logrus.Infof("Starting server on port %s", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("Server failed: %v", err)
+		logrus.Fatalf("Server failed: %v", err)
 	}
 }
 
@@ -114,7 +114,7 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 				</p>
 			</body>
 			</html>`)); err != nil {
-			log.Println("[ERROR]", err)
+			logrus.WithError(err).Error("Failed to write index page response")
 		}
 	}
 }
