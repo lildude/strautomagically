@@ -5,39 +5,92 @@ import (
 	"net/http"
 	"os"
 
-	// Autoloads .env file to supply environment variables.
-	_ "github.com/joho/godotenv/autoload"
-
 	"github.com/lildude/strautomagically/internal/database"
+	adminHandlers "github.com/lildude/strautomagically/internal/handlers/admin"
 	"github.com/lildude/strautomagically/internal/handlers/auth"
 	"github.com/lildude/strautomagically/internal/handlers/callback"
 	"github.com/lildude/strautomagically/internal/handlers/update"
+	"github.com/lildude/strautomagically/internal/middleware"
 	"github.com/lildude/strautomagically/internal/strava"
+
+	// Autoloads .env file to supply environment variables.
+	_ "github.com/joho/godotenv/autoload"
+	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
 var Version = "dev"
 
 func main() {
-	// Initialize the database
-	db, err := database.InitDB()
+	// Database setup
+	gormDB, err := database.InitDB() // Use InitDB which returns *gorm.DB
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	sqlDB, err := gormDB.DB() // Get the underlying *sql.DB
+	if err != nil {
+		log.Fatalf("Failed to get underlying sql.DB: %v", err)
+	}
+	// Note: We don't defer sqlDB.Close() here because gorm manages the connection pool.
+	// Gorm's Close() method handles closing the underlying connection if necessary.
+
+	// Use environment variables for initial admin credentials or provide defaults
+	adminUser := os.Getenv("ADMIN_USERNAME")
+	if adminUser == "" {
+		adminUser = "admin"
+	}
+	adminPass := os.Getenv("ADMIN_PASSWORD")
+	if adminPass == "" {
+		adminPass = "password" // Change this default!
+		log.Println("Warning: ADMIN_PASSWORD not set, using default 'password'. Set this environment variable.")
+	}
+	if err := database.InitAdminUser(sqlDB, adminUser, adminPass); err != nil {
+		log.Fatalf("Failed to initialize admin user: %v", err)
 	}
 
-	// Pass the database instance to handlers if needed
-	_ = db
+	// HTTP Server setup
+	mux := http.NewServeMux()
 
-	port := ":8080"
-	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
-		port = ":" + val
+	// Serve static files (including admin CSS)
+	fs := http.FileServer(http.Dir("./static"))
+	mux.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Public routes
+	mux.HandleFunc("/", indexHandler)
+	mux.HandleFunc("/webhook", webhookHandler)
+	mux.HandleFunc("/auth", auth.AuthHandler)
+	mux.HandleFunc("/auth/callback", callback.CallbackHandler)
+
+	// Public admin routes (login)
+	mux.HandleFunc("/admin/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			adminHandlers.ShowLoginForm(w, r)
+		} else if r.Method == http.MethodPost {
+			adminHandlers.HandleLogin(sqlDB)(w, r) // Login uses *sql.DB
+		} else {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	// Protected admin routes - Pass *gorm.DB
+	adminMux := http.NewServeMux()
+	adminMux.HandleFunc("/", adminHandlers.ShowDashboard(gormDB))
+	adminMux.HandleFunc("/athletes/update", adminHandlers.HandleAthleteUpdate(gormDB))
+	adminMux.HandleFunc("/summits/update", adminHandlers.HandleSummitUpdate(gormDB))
+	adminMux.HandleFunc("/logout", adminHandlers.HandleLogout)
+
+	// Apply authentication middleware ONLY to the protected admin routes
+	protectedAdminHandler := middleware.RequireAuthentication(adminMux)
+	mux.Handle("/admin/", http.StripPrefix("/admin", protectedAdminHandler))
+
+	port := os.Getenv("HTTP_PLATFORM_PORT")
+	if port == "" {
+		port = "8080"
 	}
-	http.HandleFunc("/start", indexHandler)
-	http.HandleFunc("/auth", auth.AuthHandler)
-	http.HandleFunc("/webhook", webhookHandler)
 
-	log.SetFlags(0)
-	log.Println("[INFO] Starting server on port", port)
-	log.Fatal(http.ListenAndServe(port, nil)) //#nosec: G114
+	log.Printf("Starting server on port %s", port)
+	if err := http.ListenAndServe(":"+port, mux); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {

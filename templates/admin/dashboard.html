@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Admin Dashboard</h1>
+            <form method="post" action="/admin/logout" style="display: inline;">
+                <button type="submit" class="logout-button">Logout</button>
+            </form>
+        </header>
+
+        {{if .Success}}
+            <p class="success">{{.Success}}</p>
+        {{end}}
+        {{if .Error}}
+            <p class="error">{{.Error}}</p>
+        {{end}}
+
+        <h2>Manage Athletes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Strava ID</th>
+                    <th>Name</th>
+                    <th>Last Activity ID</th>
+                    <th>Auth Token (JSON)</th> <!-- New Header -->
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Athletes}}
+                <tr>
+                    <form method="post" action="/admin/athletes/update">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <td>{{.ID}}</td>
+                        <td>{{.StravaAthleteID}}</td>
+                        <td><input type="text" name="name" value="{{.StravaAthleteName}}" required></td>
+                        <td><input type="number" name="last_activity_id" value="{{.LastActivityID}}"></td>
+                        <!-- Use the custom toString function -->
+                        <td><textarea name="strava_auth_token">{{toString .StravaAuthToken.Bytes}}</textarea></td>
+                        <td>
+                            <button type="submit">Update</button>
+                        </td>
+                    </form>
+                    <!-- Delete button could be added here if needed -->
+                </tr>
+                {{else}}
+                <tr>
+                    <!-- Adjusted colspan -->
+                    <td colspan="6">No athletes found.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+        <h2>Manage Summits</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Athlete ID</th>
+                    <th>Year</th>
+                    <th>Run (m)</th>
+                    <th>Ride (m)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range .Summits}}
+                <tr>
+                    <form method="post" action="/admin/summits/update">
+                        <input type="hidden" name="id" value="{{.ID}}">
+                        <td>{{.ID}}</td>
+                        <td>{{.AthleteID}}</td>
+                        <td>{{.Year}}</td>
+                        <td><input type="number" step="any" name="run" value="{{.Run}}"></td>
+                        <td><input type="number" step="any" name="ride" value="{{.Ride}}"></td>
+                        <td>
+                            <button type="submit">Update</button>
+                        </td>
+                    </form>
+                    <!-- Delete button could be added here if needed -->
+                </tr>
+                {{else}}
+                <tr>
+                    <td colspan="6">No summits found.</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+
+    </div>
+</body>
+</html>

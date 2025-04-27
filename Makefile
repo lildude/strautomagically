@@ -8,6 +8,9 @@ build:
 build_azure:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.Version=$(SHA)" -o strautomagically cmd/strautomagically/main.go
 
+run:
+	ENV=dev go run cmd/strautomagically/main.go
+
 lint:
 	golangci-lint run
 

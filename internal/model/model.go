@@ -30,3 +30,10 @@ type ActivityContent struct {
 	Weather     string
 	Summit      string
 }
+
+// AdminUser represents the admin user credentials.
+type AdminUser struct {
+	gorm.Model
+	Username     string `json:"username"`
+	PasswordHash string `json:"password_hash"`
+}
