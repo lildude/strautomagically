@@ -12,14 +12,14 @@ import (
 	"gorm.io/gorm"
 )
 
-// Define custom template functions
+// Define custom template functions.
 var funcMap = template.FuncMap{
 	"toString": func(b []byte) string {
 		return string(b)
 	},
 }
 
-// Parse templates with custom functions - make this the single source
+// Parse templates with custom functions - make this the single source.
 var templates = template.Must(template.New("").Funcs(funcMap).ParseGlob("templates/admin/*.html"))
 
 // ShowDashboard displays the main admin dashboard with lists of athletes and summits.
@@ -54,6 +54,7 @@ func ShowDashboard(gormDB *gorm.DB) http.HandlerFunc {
 		err = templates.ExecuteTemplate(w, "dashboard.html", data)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
 }

@@ -1,3 +1,4 @@
+// Package admin implements the admin authentication handlers.
 package admin
 
 import (
@@ -16,6 +17,7 @@ func ShowLoginForm(w http.ResponseWriter, r *http.Request) {
 	err := templates.ExecuteTemplate(w, "login.html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
 
@@ -43,6 +45,7 @@ func HandleLogin(db *sql.DB) http.HandlerFunc {
 			err := templates.ExecuteTemplate(w, "login.html", map[string]string{"Error": "Invalid credentials"})
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
 			}
 			return
 		}

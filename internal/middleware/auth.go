@@ -1,3 +1,4 @@
+// Package middleware implements the middleware functions for the admin login.
 package middleware
 
 import (

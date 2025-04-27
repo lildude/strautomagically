@@ -71,6 +71,7 @@ func TestCallbackHandler(t *testing.T) {
 	}
 }
 
-func init() {
+func TestMain(m *testing.M) {
 	logrus.SetOutput(io.Discard)
+	m.Run()
 }

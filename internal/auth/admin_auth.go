@@ -1,3 +1,4 @@
+// Package auth implements the authentication logic for the admin interface.
 package auth
 
 import (

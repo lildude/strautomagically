@@ -1,3 +1,4 @@
+// Package sessions provides session management for the admin interface.
 package sessions
 
 import (
@@ -9,7 +10,8 @@ import (
 
 var store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
 
-func init() {
+// SetupSessionStore initializes the session store and must be called before using sessions.
+func SetupSessionStore() {
 	// Ensure SESSION_KEY is set
 	if os.Getenv("SESSION_KEY") == "" {
 		panic("SESSION_KEY environment variable not set")

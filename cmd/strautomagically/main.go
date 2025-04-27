@@ -62,11 +62,12 @@ func main() {
 
 	// Public admin routes (login)
 	mux.HandleFunc("/admin/login", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet {
+		switch r.Method {
+		case http.MethodGet:
 			adminHandlers.ShowLoginForm(w, r)
-		} else if r.Method == http.MethodPost {
+		case http.MethodPost:
 			adminHandlers.HandleLogin(sqlDB)(w, r) // Login uses *sql.DB
-		} else {
+		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	})
@@ -82,12 +83,13 @@ func main() {
 	protectedAdminHandler := middleware.RequireAuthentication(adminMux)
 	mux.Handle("/admin/", http.StripPrefix("/admin", protectedAdminHandler))
 
-	port := os.Getenv("HTTP_PLATFORM_PORT")
+	port := os.Getenv("FUNCTIONS_CUSTOMHANDLER_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
 	logrus.Infof("Starting server on port %s", port)
+	//#nosec: G114
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		logrus.Fatalf("Server failed: %v", err)
 	}

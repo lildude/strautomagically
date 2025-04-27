@@ -87,6 +87,7 @@ func TestExistingSubscription(t *testing.T) {
 func TestUnsubscribe(t *testing.T) {
 }
 
-func init() {
+func TestMain(m *testing.M) {
 	logrus.SetOutput(io.Discard)
+	os.Exit(m.Run())
 }
