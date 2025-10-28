@@ -16,5 +16,6 @@
 bin/
 tmp/
 .env
+.env.prod
 strautomagically
 local.settings.json
