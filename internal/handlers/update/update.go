@@ -242,7 +242,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		// Check if it's an early morning dog walk (before 9am and at least 20 minutes)
 		hour := activity.StartDateLocal.Hour()
 		if hour < 9 && activity.ElapsedTime >= 1200 {
-			update.Name = "Emptying the 🐶"
+			update.Name = "Emptying & Exercising the 🐶"
 			update.Private = false
 			update.GearID = shoes
 			msg = "set dog walking title and made public"

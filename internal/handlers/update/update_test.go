@@ -163,7 +163,7 @@ func TestConstructUpdate(t *testing.T) {
 		{
 			"set dog walking title for early morning long walks",
 			&strava.UpdatableActivity{
-				Name:    "Emptying the 🐶",
+				Name:    "Emptying & Exercising the 🐶",
 				Private: false,
 				GearID:  "g10043849",
 			},
