@@ -52,6 +52,7 @@ type UpdatableActivity struct {
 	GearID       string `json:"gear_id,omitempty"`
 	HideFromHome bool   `json:"hide_from_home,omitempty"`
 	Name         string `json:"name,omitempty"`
+	Private      bool   `json:"private,omitempty"`
 	Trainer      bool   `json:"trainer,omitempty"`
 	Type         string `json:"type,omitempty"`
 }

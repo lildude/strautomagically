@@ -161,12 +161,29 @@ func TestConstructUpdate(t *testing.T) {
 			"handcycle.json",
 		},
 		{
-			"set gear and mute walks",
+			"set dog walking title for early morning long walks",
+			&strava.UpdatableActivity{
+				Name:    "Emptying & Exercising the 🐶",
+				Private: false,
+				GearID:  "g10043849",
+			},
+			"walk_early_morning_long.json",
+		},
+		{
+			"set gear and mute afternoon walks",
 			&strava.UpdatableActivity{
 				HideFromHome: true,
 				GearID:       "g10043849",
 			},
-			"walks.json",
+			"walk_afternoon.json",
+		},
+		{
+			"set gear and mute short early morning walks",
+			&strava.UpdatableActivity{
+				HideFromHome: true,
+				GearID:       "g10043849",
+			},
+			"walk_early_short.json",
 		},
 		{
 			"set humane burpees title and mute",

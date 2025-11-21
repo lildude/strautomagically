@@ -1,0 +1,17 @@
+{
+    "id": 12345678987654320,
+    "name": "Test Activity",
+    "distance": 28099,
+    "start_date": "2018-02-16T14:52:54Z",
+    "start_date_local": "2018-02-16T14:52:54Z",
+    "elapsed_time": 4410,
+    "external_id": "garmin_push_12345678987654321",
+    "type": "Walk",
+    "trainer": false,
+    "commute": false,
+    "private": false,
+    "workout_type": 10,
+    "hide_from_home": false,
+    "gear_id": "b12345678987654321",
+    "description": "Test activity description\n AQI: ?\n"
+}
