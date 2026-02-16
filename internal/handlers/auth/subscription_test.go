@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -38,7 +39,7 @@ func TestSubscribe(t *testing.T) {
 			httpmock.RegisterResponder("POST", "https://www.strava.com/api/v3/push_subscriptions",
 				httpmock.NewStringResponder(204, ``))
 
-			got, _ := Subscribe()
+			got, _ := Subscribe(context.Background())
 			if tc.want != got {
 				t.Errorf("expected %v, got %v", tc.want, got)
 			}
@@ -74,7 +75,7 @@ func TestExistingSubscription(t *testing.T) {
 			httpmock.RegisterResponder("GET", "https://www.strava.com/api/v3/push_subscriptions",
 				httpmock.NewStringResponder(200, string(resp)))
 
-			got := existingSubscription()
+			got := existingSubscription(context.Background())
 			if tc.want != got {
 				t.Errorf("expected %v, got %v", tc.want, got)
 			}

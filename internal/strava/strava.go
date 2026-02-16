@@ -4,6 +4,7 @@ package strava
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
@@ -74,36 +75,38 @@ type updates struct {
 	Type       string `json:"type,omitempty"`
 }
 
-func GetActivity(c *client.Client, id int64) (*Activity, error) {
+func GetActivity(ctx context.Context, c *client.Client, id int64) (*Activity, error) {
 	var a Activity
-	ctx := context.Background()
-	req, err := c.NewRequest(ctx, "GET", fmt.Sprintf("/api/v3/activities/%d", id), nil)
+	req, err := c.NewRequest(ctx, http.MethodGet, fmt.Sprintf("/api/v3/activities/%d", id), nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating get activity request: %w", err)
 	}
 
-	r, err := c.Do(req, &a)
-	if err != nil {
-		return nil, err
+	resp, err := c.Do(req, &a)
+	if resp != nil {
+		defer resp.Body.Close()
 	}
-	defer r.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("getting activity %d: %w", id, err)
+	}
 
 	return &a, nil
 }
 
-func UpdateActivity(c *client.Client, id int64, ua *UpdatableActivity) (*Activity, error) {
+func UpdateActivity(ctx context.Context, c *client.Client, id int64, ua *UpdatableActivity) (*Activity, error) {
 	var a Activity
-	ctx := context.Background()
-	req, err := c.NewRequest(ctx, "PUT", fmt.Sprintf("/api/v3/activities/%d", id), ua)
+	req, err := c.NewRequest(ctx, http.MethodPut, fmt.Sprintf("/api/v3/activities/%d", id), ua)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating update activity request: %w", err)
 	}
 
-	r, err := c.Do(req, &a)
-	if err != nil {
-		return nil, err
+	resp, err := c.Do(req, &a)
+	if resp != nil {
+		defer resp.Body.Close()
 	}
-	defer r.Body.Close()
+	if err != nil {
+		return nil, fmt.Errorf("updating activity %d: %w", id, err)
+	}
 
 	return &a, nil
 }

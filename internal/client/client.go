@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -36,7 +37,7 @@ func NewClient(baseURL *url.URL, cc *http.Client) *Client {
 
 // NewRequest creates an HTTP Request. If a non-nil body is provided
 // it will be JSON encoded and included in the request.
-func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body any) (*http.Request, error) {
 	u, err := c.BaseURL.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -71,22 +72,25 @@ func (c *Client) NewRequest(ctx context.Context, method, urlStr string, body int
 // Do sends a request and returns the response. An error is returned if the request cannot
 // be sent or if the API returns an error. If a response is received, the body response body
 // is decoded and stored in the value pointed to by v.
-func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
+func (c *Client) Do(req *http.Request, v any) (*http.Response, error) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	data, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
+	// Replace the drained body so callers can close it safely.
+	resp.Body = io.NopCloser(bytes.NewReader(data))
+
 	if err != nil {
-		return nil, err
+		return resp, fmt.Errorf("reading response body: %w", err)
 	}
-	resp.Body.Close() //nolint:gosec // I dont' care if this fails
 
 	// Anything other than a HTTP 2xx response code is treated as an error.
 	if resp.StatusCode >= http.StatusMultipleChoices {
-		err = errors.New(http.StatusText(resp.StatusCode))
-		return resp, err
+		return resp, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	if v != nil && len(data) != 0 {

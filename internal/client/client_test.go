@@ -68,7 +68,7 @@ func TestNewRequest(t *testing.T) {
 	})
 
 	t.Run("request with invalid JSON", func(tc *testing.T) {
-		type T struct{ A map[interface{}]interface{} }
+		type T struct{ A map[any]any }
 		_, err := c.NewRequest(context.Background(), "GET", ".", &T{})
 		if err == nil {
 			tc.Error("Expected error")
@@ -104,7 +104,7 @@ func TestNewRequest(t *testing.T) {
 // confirms the correct verb was used and that the decoded response value matches
 // the expected result.
 func TestDo(t *testing.T) {
-	t.Run("successful GET request", func(tc *testing.T) {
+	t.Run("successful GET request", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 
@@ -128,7 +128,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	t.Run("GET request that returns an HTTP error", func(tc *testing.T) {
+	t.Run("GET request that returns an HTTP error", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 
@@ -150,7 +150,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	t.Run("GET request that receives an empty payload", func(tc *testing.T) {
+	t.Run("GET request that receives an empty payload", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 
@@ -175,7 +175,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	t.Run("GET request that receives an HTML response", func(tc *testing.T) {
+	t.Run("GET request that receives an HTML response", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 
@@ -215,7 +215,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	t.Run("GET request on a cancelled context", func(tc *testing.T) {
+	t.Run("GET request on a cancelled context", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 
@@ -240,7 +240,7 @@ func TestDo(t *testing.T) {
 		}
 	})
 
-	t.Run("GET request that returns an error response", func(tc *testing.T) {
+	t.Run("GET request that returns an error response", func(t *testing.T) {
 		client, mux, teardown := setup()
 		defer teardown()
 

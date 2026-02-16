@@ -19,7 +19,7 @@ type Event struct {
 }
 
 type CalendarEventGetter interface {
-	GetCalendarEvent(start time.Time) (*Event, error)
+	GetCalendarEvent(ctx context.Context, start time.Time) (*Event, error)
 }
 
 type CalendarService struct {
@@ -41,8 +41,7 @@ func NewCalendarService(client HTTPClient, baseURL, calID string) *CalendarServi
 }
 
 // GetCalendarEvent returns a single event for the date passed in.
-func (cs CalendarService) GetCalendarEvent(start time.Time) (*Event, error) {
-	ctx := context.Background()
+func (cs CalendarService) GetCalendarEvent(ctx context.Context, start time.Time) (*Event, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s/%s", cs.BaseURL, cs.CalID), http.NoBody)
 	if err != nil {
 		return nil, err
@@ -62,13 +61,12 @@ func (cs CalendarService) GetCalendarEvent(start time.Time) (*Event, error) {
 	}
 
 	var events []Event
-	for i := range len(c.Events) {
-		component := c.Events[i]
+	for i := range c.Events {
 		events = append(events, Event{
-			Summary:     parseSummary(component.Summary),
-			Description: component.Description,
-			Start:       *component.Start,
-			End:         *component.End,
+			Summary:     parseSummary(c.Events[i].Summary),
+			Description: c.Events[i].Description,
+			Start:       *c.Events[i].Start,
+			End:         *c.Events[i].End,
 		})
 	}
 

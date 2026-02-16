@@ -2,7 +2,7 @@
 package auth
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -14,27 +14,27 @@ import (
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		log.Println("[ERROR] unable to parse form:", err)
+		slog.Error("unable to parse form", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	che, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	che, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
 	if err != nil {
-		log.Println("[ERROR] unable to create redis cache:", err)
+		slog.Error("unable to create redis cache", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	authToken := &oauth2.Token{}
-	che.GetJSON("strava_auth_token", &authToken) //nolint:gosec // We don't care if this fails
+	che.GetJSON(r.Context(), "strava_auth_token", &authToken) //nolint:gosec // We don't care if this fails
 
 	if state == "" {
 		if authToken.AccessToken == "" {
 			u := strava.OauthConfig.AuthCodeURL(stateToken)
-			log.Println("[INFO] redirecting to", u)
+			slog.Info("redirecting to strava auth", "url", u)
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
@@ -53,34 +53,34 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := strava.OauthConfig.Exchange(r.Context(), code)
 	if err != nil {
-		log.Println("[ERROR]", err)
+		slog.Error("token exchange failed", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	athlete, ok := token.Extra("athlete").(map[string]interface{})
+	athlete, ok := token.Extra("athlete").(map[string]any)
 	if !ok {
-		log.Println("[ERROR] unable to get athete info", err)
+		slog.Error("unable to get athlete info")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = che.SetJSON("strava_auth_token", token)
+	err = che.SetJSON(r.Context(), "strava_auth_token", token)
 	if err != nil {
-		log.Println("[ERROR]", err)
+		slog.Error("unable to store token", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Println("[INFO] successfully authenticated:", athlete["username"])
+	slog.Info("successfully authenticated", "username", athlete["username"])
 
 	// Subscribe to the activity stream - should this be here?
-	ok, err = Subscribe()
+	ok, err = Subscribe(r.Context())
 	if !ok {
-		log.Println("[ERROR] failed to subscribe to strava webhook:", err)
+		slog.Error("failed to subscribe to strava webhook", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	log.Println("[INFO] successfully subscribed to Strava activity feed")
+	slog.Info("successfully subscribed to strava activity feed")
 
 	http.Redirect(w, r, "/start", http.StatusFound)
 }

@@ -3,10 +3,9 @@ package callback
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 )
 
 func CallbackHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +22,7 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("missing query param: hub.verify_token")) //nolint:gosec // We don't care if this fails
 		return
 	}
-	if strings.Join(verify, "") != os.Getenv("STRAVA_VERIFY_TOKEN") { // TODO: generate this
+	if verify[0] != os.Getenv("STRAVA_VERIFY_TOKEN") { // TODO: generate this
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("verify token mismatch")) //nolint:gosec // We don't care if this fails
 		return
@@ -32,7 +31,7 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{"hub.challenge": challenge[0]}); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		log.Println("[ERROR]", err)
+		slog.Error("encoding callback response", "error", err)
 		return
 	}
 }

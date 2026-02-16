@@ -1,9 +1,10 @@
 package weather
 
 import (
+	"context"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -52,7 +53,7 @@ func TestGetWeather(t *testing.T) {
 		fmt.Fprintln(w, string(resp))
 	})
 
-	got, err := getWeather(rc, startIn, latIn, lonIn)
+	got, err := getWeather(context.Background(), rc, startIn, latIn, lonIn)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -82,9 +83,9 @@ func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
-	got, err := getWeather(rc, 0, 0, 0)
+	got, err := getWeather(context.Background(), rc, 0, 0, 0)
 	if err == nil {
 		t.Errorf("expected error, got nil")
 	}
@@ -111,7 +112,7 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(rc, startIn, elapsed, 0, 0)
+	got, err := GetWeatherLine(context.Background(), rc, startIn, elapsed, 0, 0)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -186,7 +187,7 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got, err := GetWeatherLine(rc, startIn, elapsed, 0, 0)
+	got, err := GetWeatherLine(context.Background(), rc, startIn, elapsed, 0, 0)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -278,7 +279,7 @@ func TestGetPollutionForAllLevels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%.2f", tt.mockPM2_5), func(t *testing.T) {
-			got := getPollution(rc, 1691648340, 1691658340, tt.mockPM2_5, -0.118092)
+			got := getPollution(context.Background(), rc, 1691648340, 1691658340, tt.mockPM2_5, -0.118092)
 
 			if got != tt.want {
 				t.Errorf("aqi %.2f expected %s, got %s", tt.mockPM2_5, tt.want, got)
@@ -292,12 +293,12 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	latIn := 51.509865
 	lonIn := -0.118092
 
-	got := getPollution(rc, 0, 0, latIn, lonIn)
+	got := getPollution(context.Background(), rc, 0, 0, latIn, lonIn)
 	if got != "?" {
 		t.Errorf("expected ?, got %q", got)
 	}
@@ -323,7 +324,7 @@ func TestGetCurrentPollutionIfEndHourSameAsNowHour(t *testing.T) {
 		fmt.Fprintln(w, resp)
 	})
 
-	got := getPollution(rc, time.Now().Unix(), time.Now().Unix(), latIn, lonIn)
+	got := getPollution(context.Background(), rc, time.Now().Unix(), time.Now().Unix(), latIn, lonIn)
 	if got != "💚" {
 		t.Errorf("expected 💚, got %q", got)
 	}

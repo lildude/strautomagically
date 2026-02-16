@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -20,27 +20,31 @@ func main() {
 	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
 		port = ":" + val
 	}
-	http.HandleFunc("/start", indexHandler)
-	http.HandleFunc("/auth", auth.AuthHandler)
-	http.HandleFunc("/webhook", webhookHandler)
 
-	log.SetFlags(0)
-	log.Println("[INFO] Starting server on port", port)
-	log.Fatal(http.ListenAndServe(port, nil)) //#nosec: G114
+	mux := http.NewServeMux()
+	mux.HandleFunc("/start", indexHandler)
+	mux.HandleFunc("/auth", auth.AuthHandler)
+	mux.HandleFunc("/webhook", webhookHandler)
+
+	slog.Info("starting server", "port", port)
+	if err := http.ListenAndServe(port, mux); err != nil { //nolint:gosec // G114
+		slog.Error("server error", "error", err)
+		os.Exit(1)
+	}
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Strautomagically-Version", Version)
 	if _, err := w.Write([]byte("Strautomagically")); err != nil {
-		log.Println("[ERROR]", err)
+		slog.Error("write failed", "error", err)
 	}
 }
 
 func webhookHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		callback.CallbackHandler(w, r)
-	}
-	if r.Method == http.MethodPost {
+	case http.MethodPost:
 		update.UpdateHandler(w, r)
 	}
 }

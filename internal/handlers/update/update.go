@@ -3,9 +3,10 @@ package update
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -32,7 +33,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	body, _ := io.ReadAll(r.Body)
 	if err := json.Unmarshal(body, &webhook); err != nil {
-		log.Println("[ERROR] unable to unmarshal webhook payload:", err)
+		slog.Error("unable to unmarshal webhook payload", "error", err)
 		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
@@ -40,21 +41,21 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	// We only react to new activities for now
 	if webhook.AspectType != "create" {
 		w.WriteHeader(http.StatusOK)
-		log.Println("[INFO] ignoring non-create webhook")
+		slog.Info("ignoring non-create webhook")
 		return
 	}
 
-	rcache, err := cache.NewRedisCache(os.Getenv("REDIS_URL")) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	rcache, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
 	if err != nil {
-		log.Println("[ERROR] unable to create redis cache:", err)
+		slog.Error("unable to create redis cache", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	// See if we've seen this activity before
-	aid, err := rcache.Get("strava_activity")
+	aid, err := rcache.Get(r.Context(), "strava_activity")
 	if err != nil {
-		log.Println("[ERROR] unable to get activity id from cache:", err)
+		slog.Error("unable to get activity id from cache", "error", err)
 	}
 	// Convert aid to int
 	s, _ := aid.(string)
@@ -62,16 +63,15 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	if os.Getenv("ENV") != "dev" && aidInt == webhook.ObjectID {
 		w.WriteHeader(http.StatusOK)
-		log.Println("[INFO] ignoring repeat event")
+		slog.Info("ignoring repeat event")
 		return
 	}
 
 	// Create the OAuth http.Client
-	// ctx := context.Background()
 	authToken := &oauth2.Token{}
-	err = rcache.GetJSON("strava_auth_token", &authToken)
+	err = rcache.GetJSON(r.Context(), "strava_auth_token", &authToken)
 	if err != nil {
-		log.Println("[ERROR] unable to get token:", err)
+		slog.Error("unable to get token", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -83,66 +83,66 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	newToken, err := ts.Token()
 	if err != nil {
-		log.Println("[ERROR] unable to refresh token:", err)
+		slog.Error("unable to refresh token", "error", err)
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken {
-		err = rcache.SetJSON("strava_auth_token", newToken)
+		err = rcache.SetJSON(r.Context(), "strava_auth_token", newToken)
 		if err != nil {
-			log.Println("[ERROR] unable to store token:", err)
+			slog.Error("unable to store token", "error", err)
 			return
 		}
-		log.Println("[INFO] updated token")
+		slog.Info("updated token")
 	}
 
 	sc := client.NewClient(surl, tc)
 
-	activity, err := strava.GetActivity(sc, webhook.ObjectID) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	activity, err := strava.GetActivity(r.Context(), sc, webhook.ObjectID)
 	if err != nil {
-		log.Println("[ERROR] unable to get activity:", err)
+		slog.Error("unable to get activity", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[INFO] Activity:%s (%d)", activity.Name, activity.ID)
+	slog.Info("activity received", "name", activity.Name, "id", activity.ID)
 
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(wclient, activity, trcal) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+	update, msg := constructUpdate(r.Context(), wclient, activity, trcal)
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
-		log.Printf("[DEBUG] update: %+v\n", update)
-		log.Println("[DEBUG] message:", msg)
+		slog.Debug("update", "update", update)
+		slog.Debug("message", "msg", msg)
 		return
 	}
 
 	if !reflect.DeepEqual(update, strava.UpdatableActivity{}) {
 		var updated *strava.Activity
-		updated, err = strava.UpdateActivity(sc, webhook.ObjectID, update) //nolint:contextcheck // TODO: pass context rather then generate in the package.
+		updated, err = strava.UpdateActivity(r.Context(), sc, webhook.ObjectID, update)
 		if err != nil {
-			log.Println("[ERROR] unable to update activity:", err)
+			slog.Error("unable to update activity", "error", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("[INFO] Activity:%s (%d): %s", updated.Name, updated.ID, msg)
+		slog.Info("activity updated", "name", updated.Name, "id", updated.ID, "msg", msg)
 
 		// Cache activity ID if we've succeeded
-		err = rcache.Set("strava_activity", webhook.ObjectID)
+		err = rcache.Set(r.Context(), "strava_activity", webhook.ObjectID)
 		if err != nil {
-			log.Println("[ERROR] unable to cache activity id:", err)
+			slog.Error("unable to cache activity id", "error", err)
 		}
 	}
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(`success`)); err != nil {
-		log.Println("[ERROR]", err)
+		slog.Error("write failed", "error", err)
 	}
 }
 
-func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
+func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -163,21 +163,21 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 
 		// We assume we've already done this if the activity name starts with TR
 		if !strings.HasPrefix(activity.Name, "TR: ") {
-			event, err := trcal.GetCalendarEvent(activity.StartDate)
+			event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
 			if err != nil {
-				log.Println("[ERROR] unable to get TrainerRoad calendar event:", err)
+				slog.Error("unable to get TrainerRoad calendar event", "error", err)
 			}
 
 			// We assume if there is an event for the day, the activity is the same
 			if event != nil && event.Summary != "" {
-				log.Println("[INFO] found TrainerRoad calendar event:", event.Summary)
+				slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
 				title = "TR: " + event.Summary
 			} else {
-				log.Println("[INFO] no TrainerRoad calendar event found")
+				slog.Info("no TrainerRoad calendar event found")
 			}
 		}
 
-		if activity.ExternalID != "" && activity.ExternalID[0:11] == "trainerroad" {
+		if strings.HasPrefix(activity.ExternalID, "trainerroad") {
 			update.GearID = trainer
 			update.Trainer = true
 		} else {
@@ -271,7 +271,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
-	w, _ := weather.GetWeatherLine(wclient, activity.StartDateLocal, int32(activity.ElapsedTime), lat, lon) //nolint:gosec // disable G115
+	w, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, int32(activity.ElapsedTime), lat, lon) //nolint:gosec // disable G115
 	if painCave {
 		// Put lat and lon back to 0 for easier templating
 		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
@@ -280,7 +280,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 	if w != nil {
 		wtr, err := execTemplate("weather.tmpl", w)
 		if err != nil {
-			log.Println("[ERROR] unable to parse weather template:", err)
+			slog.Error("unable to parse weather template", "error", err)
 		}
 
 		if activity.Description != "" && update.Description != "\n" {
@@ -293,7 +293,7 @@ func constructUpdate(wclient *client.Client, activity *strava.Activity, trcal *c
 	return &update, msg
 }
 
-func execTemplate(tmpl string, data interface{}) (string, error) {
+func execTemplate(tmpl string, data any) (string, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return "", err

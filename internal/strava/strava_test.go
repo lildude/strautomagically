@@ -1,10 +1,11 @@
 package strava
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -27,7 +28,7 @@ func TestGetActivity(t *testing.T) {
 	want := &Activity{}
 	json.Unmarshal(resp, want)
 
-	got, err := GetActivity(rc, 12345678987654321)
+	got, err := GetActivity(context.Background(), rc, 12345678987654321)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -41,13 +42,13 @@ func TestGetActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 
-	_, err := GetActivity(rc, 12345678987654321)
+	_, err := GetActivity(context.Background(), rc, 12345678987654321)
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
@@ -75,7 +76,7 @@ func TestUpdateActivity(t *testing.T) {
 		GearID:       "b1234",
 	}
 
-	got, err := UpdateActivity(rc, 12345678987654321, update)
+	got, err := UpdateActivity(context.Background(), rc, 12345678987654321, update)
 	if err != nil {
 		t.Errorf("expected nil error, got %q", err)
 	}
@@ -89,13 +90,13 @@ func TestUpdateActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 
-	_, err := UpdateActivity(rc, 12345678987654321, &UpdatableActivity{})
+	_, err := UpdateActivity(context.Background(), rc, 12345678987654321, &UpdatableActivity{})
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
