@@ -204,11 +204,9 @@ func TestConstructUpdate(t *testing.T) {
 			"trainerroad.json",
 		},
 		{
-			"prefix and set title from TrainerRoad calendar for outside ride activities",
+			"set gear to bike for non-TrainerRoad ride activities",
 			&strava.UpdatableActivity{
-				Name:    "TR: Capulin - Outside",
-				GearID:  "b10013574",
-				Trainer: false,
+				GearID: "b10013574",
 			},
 			"trainerroad_outside.json",
 		},

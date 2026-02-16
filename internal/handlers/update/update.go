@@ -158,33 +158,28 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 
 	case "Ride":
 		title = activity.Name
-		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer
-		// if external_id starts with trainerroad else set gear to bike and append "- Outside"
-
-		// We assume we've already done this if the activity name starts with TR
-		if !strings.HasPrefix(activity.Name, "TR: ") {
-			event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
-			if err != nil {
-				slog.Error("unable to get TrainerRoad calendar event", "error", err)
-			}
-
-			// We assume if there is an event for the day, the activity is the same
-			if event != nil && event.Summary != "" {
-				slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
-				title = "TR: " + event.Summary
-			} else {
-				slog.Info("no TrainerRoad calendar event found")
-			}
-		}
 
 		if strings.HasPrefix(activity.ExternalID, "trainerroad") {
 			update.GearID = trainer
 			update.Trainer = true
+
+			// Get the name from TrainerRoad calendar
+			// We assume we've already done this if the activity name starts with TR
+			if !strings.HasPrefix(activity.Name, "TR: ") {
+				event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
+				if err != nil {
+					slog.Error("unable to get TrainerRoad calendar event", "error", err)
+				}
+
+				if event != nil && event.Summary != "" {
+					slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
+					title = "TR: " + event.Summary
+				} else {
+					slog.Info("no TrainerRoad calendar event found")
+				}
+			}
 		} else {
 			update.GearID = bike
-			if strings.HasPrefix(title, "TR: ") {
-				title += " - Outside"
-			}
 		}
 
 		if title != activity.Name {
