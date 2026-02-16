@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	// Autoloads .env file to supply environment variables.
 	_ "github.com/joho/godotenv/autoload"
@@ -26,8 +27,13 @@ func main() {
 	mux.HandleFunc("/auth", auth.AuthHandler)
 	mux.HandleFunc("/webhook", webhookHandler)
 
+	srv := &http.Server{
+		Addr:              port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	slog.Info("starting server", "port", port)
-	if err := http.ListenAndServe(port, mux); err != nil { //nolint:gosec // G114
+	if err := srv.ListenAndServe(); err != nil {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}

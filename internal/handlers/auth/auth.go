@@ -29,7 +29,9 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	authToken := &oauth2.Token{}
-	che.GetJSON(r.Context(), "strava_auth_token", &authToken) //nolint:gosec // We don't care if this fails
+	if err := che.GetJSON(r.Context(), "strava_auth_token", &authToken); err != nil {
+		slog.Warn("unable to get cached auth token", "error", err)
+	}
 
 	if state == "" {
 		if authToken.AccessToken == "" {

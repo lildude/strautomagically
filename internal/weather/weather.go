@@ -83,7 +83,7 @@ type WeatherInfo struct {
 }
 
 // GetWeatherLine returns the weather conditions in a struct for passing to the templating.
-func GetWeatherLine(ctx context.Context, c *client.Client, startDate time.Time, elapsed int32, lat, lon float64) (*WeatherInfo, error) {
+func GetWeatherLine(ctx context.Context, c *client.Client, startDate time.Time, elapsed int64, lat, lon float64) (*WeatherInfo, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
 	ets := endDate.Unix()

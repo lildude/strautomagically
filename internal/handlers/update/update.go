@@ -271,7 +271,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
-	w, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, int32(activity.ElapsedTime), lat, lon) //nolint:gosec // disable G115
+	w, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, activity.ElapsedTime, lat, lon)
 	if painCave {
 		// Put lat and lon back to 0 for easier templating
 		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0

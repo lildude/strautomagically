@@ -121,7 +121,11 @@ func TestDo(t *testing.T) {
 		got := new(foo)
 
 		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
-		client.Do(req, got) //nolint:errcheck,bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, got)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		resp.Body.Close()
 
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("Expecting %v, got %v", want, got)
@@ -140,7 +144,10 @@ func TestDo(t *testing.T) {
 		})
 
 		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
-		resp, err := client.Do(req, nil) //nolint:bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, nil)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if resp.StatusCode != http.StatusInternalServerError {
 			t.Errorf("Expecting status code %v, got %v", http.StatusInternalServerError, resp.StatusCode)
@@ -165,7 +172,10 @@ func TestDo(t *testing.T) {
 
 		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
 		got := new(foo)
-		resp, err := client.Do(req, got) //nolint:bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, got)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expecting status code %v, got %v", http.StatusOK, resp.StatusCode)
@@ -205,7 +215,10 @@ func TestDo(t *testing.T) {
 
 		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
 		got := new(foo)
-		resp, err := client.Do(req, got) //nolint:bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, got)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expecting status code %v, got %v", http.StatusOK, resp.StatusCode)
@@ -230,7 +243,10 @@ func TestDo(t *testing.T) {
 		cancel()
 		req, _ := client.NewRequest(ctx, "GET", ".", nil)
 
-		resp, err := client.Do(req, nil) //nolint:bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, nil)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if err == nil {
 			t.Error("Expected error")
@@ -256,7 +272,10 @@ func TestDo(t *testing.T) {
 		})
 
 		req, _ := client.NewRequest(context.Background(), "GET", ".", nil)
-		resp, err := client.Do(req, nil) //nolint:bodyclose // we don't care about this in tests
+		resp, err := client.Do(req, nil)
+		if resp != nil {
+			defer resp.Body.Close()
+		}
 
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Errorf("Expecting status code %v, got %v", http.StatusBadRequest, resp.StatusCode)

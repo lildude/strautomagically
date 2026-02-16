@@ -100,7 +100,7 @@ func TestGetWeatherLineSameHour(t *testing.T) {
 	defer teardown()
 
 	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
-	elapsed := int32(60 * 40)
+	elapsed := int64(60 * 40)
 
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
 		resp, _ := os.ReadFile("testdata/weather.json")
@@ -154,7 +154,7 @@ func TestGetWeatherLineDiffHours(t *testing.T) {
 
 	startIn := time.Date(2006, 1, 2, 15, 0o4, 0o5, 0, time.UTC)
 	startOut := strconv.FormatInt(startIn.Unix(), 10)
-	elapsed := int32(60 * 65)
+	elapsed := int64(60 * 65)
 	endIn := startIn.Add(time.Duration(elapsed) * time.Second)
 	endOut := strconv.FormatInt(endIn.Unix(), 10)
 	midPoint := startIn.Add(time.Duration(elapsed/2) * time.Second).Unix()

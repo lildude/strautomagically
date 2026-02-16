@@ -60,7 +60,7 @@ func TestCallbackHandler(t *testing.T) {
 			}
 
 			if tt.wantStatus == http.StatusBadRequest {
-				expected := tt.name
+				expected := tt.name + "\n"
 				if string(data) != expected {
 					t.Errorf("expected '%s' got '%v'", expected, string(data))
 				}

@@ -12,19 +12,16 @@ func CallbackHandler(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	challenge, ok := q["hub.challenge"]
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing query param: hub.challenge")) //nolint:gosec // We don't care if this fails
+		http.Error(w, "missing query param: hub.challenge", http.StatusBadRequest)
 		return
 	}
 	verify, ok := q["hub.verify_token"]
 	if !ok {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("missing query param: hub.verify_token")) //nolint:gosec // We don't care if this fails
+		http.Error(w, "missing query param: hub.verify_token", http.StatusBadRequest)
 		return
 	}
 	if verify[0] != os.Getenv("STRAVA_VERIFY_TOKEN") { // TODO: generate this
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("verify token mismatch")) //nolint:gosec // We don't care if this fails
+		http.Error(w, "verify token mismatch", http.StatusBadRequest)
 		return
 	}
 
