@@ -1,10 +1,11 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -22,7 +23,7 @@ import (
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -132,7 +133,7 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	rc, mux, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
@@ -203,11 +204,9 @@ func TestConstructUpdate(t *testing.T) {
 			"trainerroad.json",
 		},
 		{
-			"prefix and set title from TrainerRoad calendar for outside ride activities",
+			"set gear to bike for non-TrainerRoad ride activities",
 			&strava.UpdatableActivity{
-				Name:    "TR: Capulin - Outside",
-				GearID:  "b10013574",
-				Trainer: false,
+				GearID: "b10013574",
 			},
 			"trainerroad_outside.json",
 		},
@@ -364,7 +363,7 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got, _ := constructUpdate(rc, &a, trcal)
+			got, _ := constructUpdate(context.Background(), rc, &a, trcal)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %+v, got %+v", tc.want, got)
 			}

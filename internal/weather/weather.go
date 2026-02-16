@@ -4,8 +4,9 @@ package weather
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -82,13 +83,13 @@ type WeatherInfo struct {
 }
 
 // GetWeatherLine returns the weather conditions in a struct for passing to the templating.
-func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, lon float64) (*WeatherInfo, error) {
+func GetWeatherLine(ctx context.Context, c *client.Client, startDate time.Time, elapsed int64, lat, lon float64) (*WeatherInfo, error) {
 	sts := startDate.Unix()
 	endDate := startDate.Add(time.Duration(elapsed) * time.Second)
 	ets := endDate.Unix()
 
 	// Get weather at start of activity
-	sw, err := getWeather(c, sts, lat, lon)
+	sw, err := getWeather(ctx, c, sts, lat, lon)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, l
 	if startDate.Hour() == endDate.Hour() {
 		ew = sw
 	} else {
-		ew, err = getWeather(c, ets, lat, lon)
+		ew, err = getWeather(ctx, c, ets, lat, lon)
 		if err != nil {
 			// If we can't get the end weather, just use the start weather
 			ew = sw
@@ -124,7 +125,7 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, l
 	}
 
 	// get aqi icon
-	aqi := getPollution(c, sts, ets, lat, lon)
+	aqi := getPollution(ctx, c, sts, ets, lat, lon)
 
 	icon := strings.Trim(sw.Weather[0].Icon, "dn")
 
@@ -165,32 +166,34 @@ func GetWeatherLine(c *client.Client, startDate time.Time, elapsed int32, lat, l
 }
 
 // getWeather returns the weather conditions for the given time.
-func getWeather(c *client.Client, dt int64, lat, lon float64) (data, error) {
+func getWeather(ctx context.Context, c *client.Client, dt int64, lat, lon float64) (data, error) {
 	params := queryParams(lat, lon)
 	params.Add("dt", strconv.FormatInt(dt, 10))
 	c.BaseURL.Path = "/data/3.0/onecall/timemachine"
 	c.BaseURL.RawQuery = params.Encode()
-	req, err := c.NewRequest(context.Background(), "GET", "", nil)
+	req, err := c.NewRequest(ctx, http.MethodGet, "", nil)
 	if err != nil {
 		return data{}, err
 	}
 
 	// Get weather at start of activity
 	w := weatherData{}
-	r, err := c.Do(req, &w)
+	resp, err := c.Do(req, &w)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		return data{}, err
 	}
-	defer r.Body.Close()
-	data := w.Data[0]
-	data.Lat = w.Lat
-	data.Lon = w.Lon
+	d := w.Data[0]
+	d.Lat = w.Lat
+	d.Lon = w.Lon
 
-	return data, nil
+	return d, nil
 }
 
 // getPollution returns the AQI icon for the midpoint of the given period.
-func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) string {
+func getPollution(ctx context.Context, c *client.Client, startDate, endDate int64, lat, lon float64) string {
 	aqi := "?"
 	params := queryParams(lat, lon)
 	c.BaseURL.Path = "/data/2.5/air_pollution"
@@ -205,25 +208,27 @@ func getPollution(c *client.Client, startDate, endDate int64, lat, lon float64) 
 		params.Set("end", strconv.FormatInt(midPoint+1800, 10))
 	}
 	c.BaseURL.RawQuery = params.Encode()
-	req, err := c.NewRequest(context.Background(), "GET", "", nil)
+	req, err := c.NewRequest(ctx, http.MethodGet, "", nil)
 	if err != nil {
 		return aqi
 	}
 
 	p := pollution{}
-	r, err := c.Do(req, &p)
+	resp, err := c.Do(req, &p)
+	if resp != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
-		log.Println("[ERROR] Failed to get pollution: ", err)
+		slog.Error("failed to get pollution", "error", err)
 		return aqi
 	}
-	defer r.Body.Close()
 
 	// OpenWeatherMap uses a non-standard AQI scale so we need to convert it.
 	// Converting to the scale from https://aqicn.org/scale/ using only the PM2.5 value
 	// as I'm not too concerned about it being 100% accurate.
 	results, err := goaqi.Calculate(goaqi.PM25{Concentration: p.List[0].Components.PM25})
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("calculating AQI", "error", err)
 		return aqi
 	}
 

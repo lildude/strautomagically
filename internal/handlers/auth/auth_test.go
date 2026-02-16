@@ -2,7 +2,7 @@ package auth
 
 import (
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,7 +14,7 @@ import (
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	log.SetOutput(io.Discard)
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()

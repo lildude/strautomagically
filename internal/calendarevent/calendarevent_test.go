@@ -1,6 +1,7 @@
 package calendarevent
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"os"
@@ -35,7 +36,7 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 	t.Run("should return an event", func(t *testing.T) {
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
 
-		event, err := cs.GetCalendarEvent(start)
+		event, err := cs.GetCalendarEvent(context.Background(), start)
 		if err != nil {
 			t.Errorf("unexpected error = %v", err)
 			return
@@ -58,7 +59,7 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 		cs.Client = mockClient
 
 		start := time.Date(2023, 12, 6, 0, 0, 0, 1, time.UTC)
-		_, err := cs.GetCalendarEvent(start)
+		_, err := cs.GetCalendarEvent(context.Background(), start)
 		if err == nil {
 			t.Errorf("expected an error but got nil")
 			return
@@ -67,7 +68,7 @@ func TestGetTrainerRoadCalendarEvent(t *testing.T) {
 
 	t.Run("should return nil if no events found", func(t *testing.T) {
 		start := time.Date(2025, 12, 6, 0, 0, 0, 1, time.UTC)
-		event, _ := cs.GetCalendarEvent(start)
+		event, _ := cs.GetCalendarEvent(context.Background(), start)
 		if event != nil {
 			t.Errorf("expected event to be nil but got %v", event)
 			return
