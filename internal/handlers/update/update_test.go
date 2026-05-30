@@ -133,6 +133,79 @@ func TestUpdateHandler(t *testing.T) {
 	}
 }
 
+func TestUpdateHandlerStoresRefreshedTokens(t *testing.T) {
+	// Discard logs to avoid polluting test output
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	token, _ := os.ReadFile("testdata/oauth_token.json")
+	activity, _ := os.ReadFile("testdata/activity.json")
+	weather, _ := os.ReadFile("testdata/weather.json")
+	aqi, _ := os.ReadFile("testdata/aqi.json")
+
+	httpmock.RegisterResponder("POST", "https://www.strava.com/oauth/token",
+		httpmock.NewStringResponder(200, string(token)))
+
+	httpmock.RegisterResponder("GET", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, string(activity)))
+
+	httpmock.RegisterResponder("PUT", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, string(activity)))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/3.0/onecall/timemachine",
+		httpmock.NewStringResponder(200, string(weather)))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/2.5/air_pollution/history",
+		httpmock.NewStringResponder(200, string(aqi)))
+
+	t.Setenv("ENV", "test")
+
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+	t.Cleanup(func() { database.SetTestDB(nil) })
+
+	db.Create(&model.Athlete{
+		StravaAthleteID: 1,
+		StravaAuthToken: `{"access_token":"old-access-token","refresh_token":"old-refresh-token","expiry":"2000-01-01T00:00:00Z"}`,
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(`{"owner_id": 1, "aspect_type": "create", "object_id": 456}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(UpdateHandler).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %d want %d", rr.Code, http.StatusOK)
+	}
+
+	var athlete model.Athlete
+	if err := db.First(&athlete, "strava_athlete_id = ?", 1).Error; err != nil {
+		t.Fatalf("failed to load athlete: %v", err)
+	}
+
+	if athlete.StravaAccessToken != "123456789" {
+		t.Errorf("unexpected access token: got %q want %q", athlete.StravaAccessToken, "123456789")
+	}
+	if athlete.StravaRefreshToken != "987654321" {
+		t.Errorf("unexpected refresh token: got %q want %q", athlete.StravaRefreshToken, "987654321")
+	}
+
+	var storedToken map[string]any
+	if err := json.Unmarshal([]byte(athlete.StravaAuthToken), &storedToken); err != nil {
+		t.Fatalf("expected valid token JSON to be stored: %v", err)
+	}
+	if storedToken["access_token"] != "123456789" {
+		t.Errorf("unexpected auth token payload access token: got %#v want %q", storedToken["access_token"], "123456789")
+	}
+	if storedToken["refresh_token"] != "987654321" {
+		t.Errorf("unexpected auth token payload refresh token: got %#v want %q", storedToken["refresh_token"], "987654321")
+	}
+}
+
 type MockClient struct {
 	DoFunc func(req *http.Request) (*http.Response, error)
 }

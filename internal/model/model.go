@@ -10,8 +10,10 @@ type Athlete struct {
 	LastActivityID    int64
 	StravaAthleteID   int64
 	StravaAthleteName string
+	StravaAccessToken string
 	// StravaAuthToken stores the athlete's OAuth2 token as a JSON-encoded string.
-	StravaAuthToken string
+	StravaAuthToken    string
+	StravaRefreshToken string
 }
 
 // Summit represents a summit record in the database, tracking the total

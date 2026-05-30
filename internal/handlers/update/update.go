@@ -93,12 +93,16 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Error("unable to refresh token", "error", err)
 		return
 	}
-	if newToken.AccessToken != authToken.AccessToken {
+	if newToken.AccessToken != authToken.AccessToken || newToken.RefreshToken != authToken.RefreshToken {
 		t, mErr := json.Marshal(newToken)
 		if mErr != nil {
 			slog.Error("unable to marshal token", "error", mErr)
 		} else {
-			db.Model(&athlete).Update("strava_auth_token", string(t))
+			db.Model(&athlete).Updates(map[string]any{
+				"strava_access_token":  newToken.AccessToken,
+				"strava_auth_token":    string(t),
+				"strava_refresh_token": newToken.RefreshToken,
+			})
 			slog.Info("updated token")
 		}
 	}

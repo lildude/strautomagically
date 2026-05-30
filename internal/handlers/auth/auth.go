@@ -87,8 +87,10 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	// Insert or update the athlete in the database
 	var athlete model.Athlete
 	db.Where(model.Athlete{StravaAthleteID: int64(athleteID)}).FirstOrCreate(&athlete)
+	athlete.StravaAccessToken = token.AccessToken
 	athlete.StravaAthleteName = athleteName
 	athlete.StravaAuthToken = string(tokenJSON)
+	athlete.StravaRefreshToken = token.RefreshToken
 	db.Save(&athlete)
 
 	slog.Info("successfully authenticated", "username", athleteName)
