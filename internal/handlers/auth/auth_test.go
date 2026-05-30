@@ -8,9 +8,25 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
+	"github.com/glebarez/sqlite"
 	"github.com/jarcoal/httpmock"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
+	"gorm.io/gorm"
 )
+
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to connect to test database: %v", err)
+	}
+
+	if err := db.AutoMigrate(&model.Athlete{}, &model.Summit{}); err != nil {
+		t.Fatalf("failed to migrate test database: %v", err)
+	}
+
+	return db
+}
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
@@ -39,9 +55,10 @@ func TestAuthHandler(t *testing.T) {
 	httpmock.RegisterResponder("POST", "https://www.strava.com/api/v3/push_subscriptions",
 		httpmock.NewStringResponder(200, `{"id":1}`))
 
-	r := miniredis.RunT(t)
-	defer r.Close()
-	t.Setenv("REDIS_URL", "redis://"+r.Addr())
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+	t.Cleanup(func() { database.SetTestDB(nil) })
+
 	t.Setenv("STATE_TOKEN", "test-state-token")
 
 	tests := []struct {

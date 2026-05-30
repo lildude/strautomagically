@@ -1,0 +1,6 @@
+{{ .Description }}
+
+{{ if eq .Weather.Start.Lat 0.0 }}The Pain Cave{{ else }}On the road{{ end }}: {{ .Weather.Start.Icon }} {{ .Weather.Start.Desc }} | 🌡 {{ .Weather.Start.Temp }}-{{ .Weather.End.Temp }}°C | 👌 {{ .Weather.Start.FeelsLike }}°C | 💦 {{ .Weather.Start.Humidity }}-{{ .Weather.End.Humidity }}% | AQI {{ .Weather.Aqi }}
+{{ if and .Summit (gt .Summit.TotalElevationGain 0.0) }}
+{{ if eq .Summit.Type "Run" }}🦶{{ else }}🚴‍♂️{{ end }}⬆️ {{ .Summit.TotalElevationGain }}m
+{{ end }}

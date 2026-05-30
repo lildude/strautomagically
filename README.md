@@ -17,8 +17,11 @@ If I spot a fork and find something I like that you've done, I will pinch it ðŸ˜
 
 You will need to create an API application in [your settings on Strava](https://www.strava.com/settings/api) and take note of the client ID and secret.
 If you are running this locally, you will need to set the callback domain to `localhost:8080`, or your ngrok URL if you want to use [ngrok](https://ngrok.com/).
-You will also need a Redis database which is used to store the authentication and refresh tokens.
-I use a free database from [Redis](https://redis.com/try-free/) as it's cheaper than Azure ðŸ˜œ.
+You will also need somewhere to store the authentication and refresh tokens.
+This uses a local [SQLite](https://www.sqlite.org) database stored in a file called `database.db`.
+When running locally this lives in the root directory of the app.
+When running on Azure it is stored at `/home/site/wwwroot/database.db` so that it persists across restarts and redeploys.
+You can override the location by setting the `DATABASE_PATH` environment variable.
 Optional: If you want to add weather information to your entries, you will need to register for a free [OpenWeather](https://openweathermap.org) account and obtain an API key.
 
 ### Running Locally
@@ -29,8 +32,7 @@ Optional: If you want to add weather information to your entries, you will need 
    - `STRAVA_CALLBACK_URI` to the same domain as you registered followed by `/webhook` eg `http://localhost:8080/webhook`
    - `STRAVA_VERIFY_TOKEN` to any random unique string
    - `STATE_TOKEN` to any random unique string
-   - `REDIS_URL` to the database URL for your Redis database in the form `redis://<username>:<password>@<hostname>/<database>:<port>`.
-     If you're using Heroku, you can use the URL Heroku uses.
+   - Optional: `DATABASE_PATH` to override the path to the SQLite `database.db` file.
    - Optional: `OWM_API_KEY` to the OpenWeather API key.
 1. Copy those same settings to `local.settings.json` as it makes it easy to set these in the Azure Functions configuration.
 1. Configure your rules in the `update.go` file. I plan to move this out to a better place in future.

@@ -12,16 +12,18 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,23 +47,17 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rcache, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
+	db, err := database.InitDB()
 	if err != nil {
-		slog.Error("unable to create redis cache", "error", err)
+		slog.Error("unable to connect to database", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// See if we've seen this activity before
-	aid, err := rcache.Get(r.Context(), "strava_activity")
-	if err != nil {
-		slog.Error("unable to get activity id from cache", "error", err)
-	}
-	// Convert aid to int
-	s, _ := aid.(string)
-	aidInt, _ := strconv.ParseInt(s, 10, 64)
+	var athlete model.Athlete
+	db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID)
 
-	if os.Getenv("ENV") != "dev" && aidInt == webhook.ObjectID {
+	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
 		slog.Info("ignoring repeat event")
 		return
@@ -69,9 +65,15 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the OAuth http.Client
 	authToken := &oauth2.Token{}
-	err = rcache.GetJSON(r.Context(), "strava_auth_token", &authToken)
-	if err != nil {
-		slog.Error("unable to get token", "error", err)
+	if athlete.StravaAuthToken != "" {
+		if err := json.Unmarshal([]byte(athlete.StravaAuthToken), authToken); err != nil {
+			slog.Error("unable to unmarshal Strava auth token", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
+	if authToken.AccessToken == "" {
+		slog.Error("no access token found")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -87,12 +89,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken {
-		err = rcache.SetJSON(r.Context(), "strava_auth_token", newToken)
-		if err != nil {
-			slog.Error("unable to store token", "error", err)
-			return
+		t, mErr := json.Marshal(newToken)
+		if mErr != nil {
+			slog.Error("unable to marshal token", "error", mErr)
+		} else {
+			db.Model(&athlete).Update("strava_auth_token", string(t))
+			slog.Info("updated token")
 		}
-		slog.Info("updated token")
 	}
 
 	sc := client.NewClient(surl, tc)
@@ -106,10 +109,17 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("activity received", "name", activity.Name, "id", activity.ID)
 
+	// Update the summit record for this athlete
+	if err := summits.UpdateSummit(db, activity); err != nil {
+		slog.Error("unable to update summit record", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(r.Context(), wclient, activity, trcal)
+	update, msg := constructUpdate(r.Context(), wclient, activity, trcal, db)
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -128,13 +138,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		slog.Info("activity updated", "name", updated.Name, "id", updated.ID, "msg", msg)
-
-		// Cache activity ID if we've succeeded
-		err = rcache.Set(r.Context(), "strava_activity", webhook.ObjectID)
-		if err != nil {
-			slog.Error("unable to cache activity id", "error", err)
-		}
 	}
+
+	// Record the last activity ID we've processed for this athlete
+	db.Model(&athlete).Update("last_activity_id", webhook.ObjectID)
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(`success`)); err != nil {
@@ -142,7 +149,14 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
+// descriptionContent is the data passed to the description template.
+type descriptionContent struct {
+	Description string
+	Weather     *weather.WeatherInfo
+	Summit      *summits.ActivitySummit
+}
+
+func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService, db *gorm.DB) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -159,27 +173,32 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 	case "Ride":
 		title = activity.Name
 
+		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer
+		// if external_id starts with trainerroad else set gear to bike and append "- Outside".
+		// We assume we've already done this if the activity name starts with TR.
+		if !strings.HasPrefix(activity.Name, "TR: ") {
+			event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
+			if err != nil {
+				slog.Error("unable to get TrainerRoad calendar event", "error", err)
+			}
+
+			// We assume if there is an event for the day, the activity is the same
+			if event != nil && event.Summary != "" {
+				slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
+				title = "TR: " + event.Summary
+			} else {
+				slog.Info("no TrainerRoad calendar event found")
+			}
+		}
+
 		if strings.HasPrefix(activity.ExternalID, "trainerroad") {
 			update.GearID = trainer
 			update.Trainer = true
-
-			// Get the name from TrainerRoad calendar
-			// We assume we've already done this if the activity name starts with TR
-			if !strings.HasPrefix(activity.Name, "TR: ") {
-				event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
-				if err != nil {
-					slog.Error("unable to get TrainerRoad calendar event", "error", err)
-				}
-
-				if event != nil && event.Summary != "" {
-					slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
-					title = "TR: " + event.Summary
-				} else {
-					slog.Info("no TrainerRoad calendar event found")
-				}
-			}
 		} else {
 			update.GearID = bike
+			if strings.HasPrefix(title, "TR: ") {
+				title += " - Outside"
+			}
 		}
 
 		if title != activity.Name {
@@ -195,7 +214,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 			// We only want the first line if the description contains the app.erg.zone URL
 			if strings.Contains(activity.Description, "app.erg.zone") {
 				title = lines[0]
-				update.Description = "\n"
+				activity.Description = ""
 			}
 		}
 
@@ -234,19 +253,10 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		update.Trainer = true
 		msg = "set gear to trainer"
 	case "Walk":
-		// Check if it's an early morning dog walk (before 9am and at least 20 minutes)
-		hour := activity.StartDateLocal.Hour()
-		if hour < 9 && activity.ElapsedTime >= 1200 {
-			update.Name = "Emptying & Exercising the 🐶"
-			update.Private = false
-			update.GearID = shoes
-			msg = "set dog walking title and made public"
-		} else {
-			// Mute walks and set shoes
-			update.HideFromHome = true
-			update.GearID = shoes
-			msg = "muted walk"
-		}
+		// Mute walks and set shoes
+		update.HideFromHome = true
+		update.GearID = shoes
+		msg = "muted walk"
 	case "WeightTraining":
 		// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
 		if activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
@@ -266,24 +276,31 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
-	w, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, activity.ElapsedTime, lat, lon)
+	wi, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, activity.ElapsedTime, lat, lon)
+	if wi == nil {
+		return &update, msg
+	}
 	if painCave {
 		// Put lat and lon back to 0 for easier templating
-		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
+		wi.Start.Lat, wi.Start.Lon, wi.End.Lat, wi.End.Lon = 0, 0, 0, 0
 	}
 
-	if w != nil {
-		wtr, err := execTemplate("weather.tmpl", w)
-		if err != nil {
-			slog.Error("unable to parse weather template", "error", err)
-		}
-
-		if activity.Description != "" && update.Description != "\n" {
-			update.Description = activity.Description + "\n\n"
-		}
-		update.Description += wtr
-		msg += " & added weather"
+	summit, err := summits.GetSummitForActivity(db, activity)
+	if err != nil {
+		slog.Error("unable to get summit", "error", err)
 	}
+
+	content := descriptionContent{
+		Description: activity.Description,
+		Weather:     wi,
+		Summit:      summit,
+	}
+
+	desc, err := execTemplate("description.tmpl", content)
+	if err != nil {
+		slog.Error("unable to parse description template", "error", err)
+	}
+	update.Description = desc
 
 	return &update, msg
 }

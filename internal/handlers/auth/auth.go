@@ -2,13 +2,14 @@
 package auth
 
 import (
+	"encoding/json"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/lildude/strautomagically/internal/cache"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
-	"golang.org/x/oauth2"
 )
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -21,25 +22,25 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	state := r.Form.Get("state")
 	stateToken := os.Getenv("STATE_TOKEN")
-	che, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
+
+	db, err := database.InitDB()
 	if err != nil {
-		slog.Error("unable to create redis cache", "error", err)
+		slog.Error("unable to connect to database", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	authToken := &oauth2.Token{}
-	if err := che.GetJSON(r.Context(), "strava_auth_token", &authToken); err != nil {
-		slog.Warn("unable to get cached auth token", "error", err)
-	}
-
+	// No state means this is the start of the auth flow: redirect to Strava to
+	// authenticate, unless we already have a token stored.
 	if state == "" {
-		if authToken.AccessToken == "" {
+		var athlete model.Athlete
+		db.First(&athlete)
+		if athlete.StravaAuthToken != "" {
+			http.Redirect(w, r, "/start", http.StatusFound)
+		} else {
 			u := strava.OauthConfig.AuthCodeURL(stateToken)
 			slog.Info("redirecting to strava auth", "url", u)
 			http.Redirect(w, r, u, http.StatusFound)
-		} else {
-			http.Redirect(w, r, "/start", http.StatusFound)
 		}
 		return
 	}
@@ -60,20 +61,31 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	athlete, ok := token.Extra("athlete").(map[string]any)
+	athleteInfo, ok := token.Extra("athlete").(map[string]any)
 	if !ok {
 		slog.Error("unable to get athlete info")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	err = che.SetJSON(r.Context(), "strava_auth_token", token)
+	tokenJSON, err := json.Marshal(token)
 	if err != nil {
-		slog.Error("unable to store token", "error", err)
+		slog.Error("unable to marshal token", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	slog.Info("successfully authenticated", "username", athlete["username"])
+
+	athleteID, _ := athleteInfo["id"].(float64)
+	athleteName, _ := athleteInfo["username"].(string)
+
+	// Insert or update the athlete in the database
+	var athlete model.Athlete
+	db.Where(model.Athlete{StravaAthleteID: int64(athleteID)}).FirstOrCreate(&athlete)
+	athlete.StravaAthleteName = athleteName
+	athlete.StravaAuthToken = string(tokenJSON)
+	db.Save(&athlete)
+
+	slog.Info("successfully authenticated", "username", athleteName)
 
 	// Subscribe to the activity stream - should this be here?
 	ok, err = Subscribe(r.Context())
