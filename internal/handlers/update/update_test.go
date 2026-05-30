@@ -166,12 +166,13 @@ func TestUpdateHandlerStoresRefreshedTokens(t *testing.T) {
 	database.SetTestDB(db)
 	t.Cleanup(func() { database.SetTestDB(nil) })
 
+	const athleteID = int64(42)
 	db.Create(&model.Athlete{
-		StravaAthleteID: 1,
+		StravaAthleteID: athleteID,
 		StravaAuthToken: `{"access_token":"old-access-token","refresh_token":"old-refresh-token","expiry":"2000-01-01T00:00:00Z"}`,
 	})
 
-	req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(`{"owner_id": 1, "aspect_type": "create", "object_id": 456}`))
+	req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(`{"owner_id": 42, "aspect_type": "create", "object_id": 456}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +184,7 @@ func TestUpdateHandlerStoresRefreshedTokens(t *testing.T) {
 	}
 
 	var athlete model.Athlete
-	if err := db.First(&athlete, "strava_athlete_id = ?", 1).Error; err != nil {
+	if err := db.First(&athlete, "strava_athlete_id = ?", athleteID).Error; err != nil {
 		t.Fatalf("failed to load athlete: %v", err)
 	}
 
