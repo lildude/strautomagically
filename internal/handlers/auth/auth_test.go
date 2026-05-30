@@ -144,7 +144,7 @@ func TestAuthHandlerStoresTokens(t *testing.T) {
 
 	t.Setenv("STATE_TOKEN", "test-state-token")
 
-	req, err := http.NewRequest(http.MethodPost, "/auth?state=test-state-token&code=test-code", nil)
+	req, err := http.NewRequest(http.MethodPost, "/auth?state=test-state-token&code=test-code", strings.NewReader(""))
 	if err != nil {
 		t.Fatal(err)
 	}
