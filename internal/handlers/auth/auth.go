@@ -3,6 +3,7 @@ package auth
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"gorm.io/gorm"
 )
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +36,11 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	// authenticate, unless we already have a token stored.
 	if state == "" {
 		var athlete model.Athlete
-		db.First(&athlete)
+		if err := db.First(&athlete).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			slog.Error("unable to query athlete", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 		if athlete.StravaAuthToken != "" {
 			http.Redirect(w, r, "/start", http.StatusFound)
 		} else {

@@ -3,6 +3,7 @@
 package summits
 
 import (
+	"errors"
 	"log/slog"
 
 	"github.com/lildude/strautomagically/internal/model"
@@ -58,8 +59,9 @@ func GetSummitForActivity(db *gorm.DB, activity *strava.Activity) (*ActivitySumm
 	activityYear := activity.StartDate.Year()
 	var summit model.Summit
 	err := db.Where("athlete_id = ? AND year = ?", athleteID, activityYear).First(&summit).Error
-	if err != nil && err.Error() == "record not found" {
-		return nil, nil
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		slog.Error("failed to query summit record", "error", err)
+		return nil, err
 	}
 
 	activitySummit := ActivitySummit{

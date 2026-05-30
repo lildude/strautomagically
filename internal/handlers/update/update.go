@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -55,7 +56,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var athlete model.Athlete
-	db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID)
+	if err := db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		slog.Error("unable to query athlete", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
