@@ -140,13 +140,13 @@ func TestUpdateHandlerStoresRefreshedTokens(t *testing.T) {
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
-	token, _ := os.ReadFile("testdata/oauth_token.json")
+	tokenJSON, _ := os.ReadFile("testdata/oauth_token.json")
 	activity, _ := os.ReadFile("testdata/activity.json")
 	weather, _ := os.ReadFile("testdata/weather.json")
 	aqi, _ := os.ReadFile("testdata/aqi.json")
 
 	httpmock.RegisterResponder("POST", "https://www.strava.com/oauth/token",
-		httpmock.NewStringResponder(200, string(token)))
+		httpmock.NewStringResponder(200, string(tokenJSON)))
 
 	httpmock.RegisterResponder("GET", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
 		httpmock.NewStringResponder(200, string(activity)))
