@@ -98,11 +98,15 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		if mErr != nil {
 			slog.Error("unable to marshal token", "error", mErr)
 		} else {
-			db.Model(&athlete).Updates(map[string]any{
+			if err := db.Model(&athlete).Updates(map[string]any{
 				"strava_access_token":  newToken.AccessToken,
 				"strava_auth_token":    string(t),
 				"strava_refresh_token": newToken.RefreshToken,
-			})
+			}).Error; err != nil {
+				slog.Error("unable to store refreshed token", "error", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
 			slog.Info("updated token")
 		}
 	}
@@ -150,7 +154,11 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Record the last activity ID we've processed for this athlete
-	db.Model(&athlete).Update("last_activity_id", webhook.ObjectID)
+	if err := db.Model(&athlete).Update("last_activity_id", webhook.ObjectID).Error; err != nil {
+		slog.Error("unable to store last activity id", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
 	if _, err = w.Write([]byte(`success`)); err != nil {

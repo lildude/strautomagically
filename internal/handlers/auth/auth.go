@@ -86,12 +86,20 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Insert or update the athlete in the database
 	var athlete model.Athlete
-	db.Where(model.Athlete{StravaAthleteID: int64(athleteID)}).FirstOrCreate(&athlete)
+	if err := db.Where(model.Athlete{StravaAthleteID: int64(athleteID)}).FirstOrCreate(&athlete).Error; err != nil {
+		slog.Error("unable to load or create athlete", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 	athlete.StravaAccessToken = token.AccessToken
 	athlete.StravaAthleteName = athleteName
 	athlete.StravaAuthToken = string(tokenJSON)
 	athlete.StravaRefreshToken = token.RefreshToken
-	db.Save(&athlete)
+	if err := db.Save(&athlete).Error; err != nil {
+		slog.Error("unable to save athlete", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
 
 	slog.Info("successfully authenticated", "username", athleteName)
 
