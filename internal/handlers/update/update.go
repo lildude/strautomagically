@@ -258,10 +258,19 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		update.Trainer = true
 		msg = "set gear to trainer"
 	case "Walk":
-		// Mute walks and set shoes
-		update.HideFromHome = true
-		update.GearID = shoes
-		msg = "muted walk"
+		// Check if it's an early morning dog walk (before 9am and at least 20 minutes)
+		hour := activity.StartDateLocal.Hour()
+		if hour < 9 && activity.ElapsedTime >= 1200 {
+			update.Name = "Emptying & Exercising the 🐶"
+			update.Private = false
+			update.GearID = shoes
+			msg = "set dog walking title and made public"
+		} else {
+			// Mute walks and set shoes
+			update.HideFromHome = true
+			update.GearID = shoes
+			msg = "muted walk"
+		}
 	case "WeightTraining":
 		// Set Humane Burpees Title for WeightLifting activities between 3 & 7 minutes long
 		if activity.ElapsedTime >= 180 && activity.ElapsedTime <= 420 {
