@@ -57,7 +57,7 @@ func InitDB() (*gorm.DB, error) {
 	}
 
 	// Auto-migrate the schema
-	if err := db.AutoMigrate(&model.Athlete{}); err != nil {
+	if err := db.AutoMigrate(&model.Athlete{}, &model.Summit{}); err != nil {
 		return nil, err
 	}
 

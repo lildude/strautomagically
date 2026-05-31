@@ -15,3 +15,14 @@ type Athlete struct {
 	StravaAuthToken    string
 	StravaRefreshToken string
 }
+
+// Summit represents a summit record in the database, tracking the total
+// elevation gain for an athlete in a given year, split by activity type.
+type Summit struct {
+	gorm.Model
+
+	AthleteID int64
+	Year      int64
+	Run       float64
+	Ride      float64
+}

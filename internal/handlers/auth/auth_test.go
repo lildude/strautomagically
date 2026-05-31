@@ -21,7 +21,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.Athlete{}); err != nil {
+	if err := db.AutoMigrate(&model.Athlete{}, &model.Summit{}); err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
 	}
 
