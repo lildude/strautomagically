@@ -21,7 +21,6 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
-	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -122,17 +121,10 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("activity received", "name", activity.Name, "id", activity.ID)
 
-	// Update the summit record for this athlete
-	if err := summits.UpdateSummit(db, activity); err != nil {
-		slog.Error("unable to update summit record", "error", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	}
-
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(r.Context(), wclient, activity, trcal, db)
+	update, msg := constructUpdate(r.Context(), wclient, activity, trcal)
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -166,14 +158,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// descriptionContent is the data passed to the description template.
-type descriptionContent struct {
-	Description string
-	Weather     *weather.WeatherInfo
-	Summit      *summits.ActivitySummit
-}
-
-func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService, db *gorm.DB) (ua *strava.UpdatableActivity, msg string) {
+func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -190,32 +175,27 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 	case "Ride":
 		title = activity.Name
 
-		// Get the name from TrainerRoad calendar, prepend it with TR and set gear to trainer
-		// if external_id starts with trainerroad else set gear to bike and append "- Outside".
-		// We assume we've already done this if the activity name starts with TR.
-		if !strings.HasPrefix(activity.Name, "TR: ") {
-			event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
-			if err != nil {
-				slog.Error("unable to get TrainerRoad calendar event", "error", err)
-			}
-
-			// We assume if there is an event for the day, the activity is the same
-			if event != nil && event.Summary != "" {
-				slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
-				title = "TR: " + event.Summary
-			} else {
-				slog.Info("no TrainerRoad calendar event found")
-			}
-		}
-
 		if strings.HasPrefix(activity.ExternalID, "trainerroad") {
 			update.GearID = trainer
 			update.Trainer = true
+
+			// Get the name from TrainerRoad calendar
+			// We assume we've already done this if the activity name starts with TR
+			if !strings.HasPrefix(activity.Name, "TR: ") {
+				event, err := trcal.GetCalendarEvent(ctx, activity.StartDate)
+				if err != nil {
+					slog.Error("unable to get TrainerRoad calendar event", "error", err)
+				}
+
+				if event != nil && event.Summary != "" {
+					slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
+					title = "TR: " + event.Summary
+				} else {
+					slog.Info("no TrainerRoad calendar event found")
+				}
+			}
 		} else {
 			update.GearID = bike
-			if strings.HasPrefix(title, "TR: ") {
-				title += " - Outside"
-			}
 		}
 
 		if title != activity.Name {
@@ -231,7 +211,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 			// We only want the first line if the description contains the app.erg.zone URL
 			if strings.Contains(activity.Description, "app.erg.zone") {
 				title = lines[0]
-				activity.Description = ""
+				update.Description = "\n"
 			}
 		}
 
@@ -302,31 +282,24 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		painCave, lat, lon = false, activity.StartLatlng[0], activity.StartLatlng[1]
 	}
 
-	wi, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, activity.ElapsedTime, lat, lon)
-	if wi == nil {
-		return &update, msg
-	}
+	w, _ := weather.GetWeatherLine(ctx, wclient, activity.StartDateLocal, activity.ElapsedTime, lat, lon)
 	if painCave {
 		// Put lat and lon back to 0 for easier templating
-		wi.Start.Lat, wi.Start.Lon, wi.End.Lat, wi.End.Lon = 0, 0, 0, 0
+		w.Start.Lat, w.Start.Lon, w.End.Lat, w.End.Lon = 0, 0, 0, 0
 	}
 
-	summit, err := summits.GetSummitForActivity(db, activity)
-	if err != nil {
-		slog.Error("unable to get summit", "error", err)
-	}
+	if w != nil {
+		wtr, err := execTemplate("weather.tmpl", w)
+		if err != nil {
+			slog.Error("unable to parse weather template", "error", err)
+		}
 
-	content := descriptionContent{
-		Description: activity.Description,
-		Weather:     wi,
-		Summit:      summit,
+		if activity.Description != "" && update.Description != "\n" {
+			update.Description = activity.Description + "\n\n"
+		}
+		update.Description += wtr
+		msg += " & added weather"
 	}
-
-	desc, err := execTemplate("description.tmpl", content)
-	if err != nil {
-		slog.Error("unable to parse description template", "error", err)
-	}
-	update.Description = desc
 
 	return &update, msg
 }

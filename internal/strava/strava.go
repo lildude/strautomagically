@@ -28,30 +28,23 @@ var (
 
 // Activity struct holds only the data we want from the Strava API for an activity.
 type Activity struct {
-	Athlete            Athlete   `json:"athlete"`
-	Commute            bool      `json:"commute"`
-	Description        string    `json:"description"`
-	Distance           float64   `json:"distance"`
-	ElapsedTime        int64     `json:"elapsed_time"`
-	EndLatlng          []float64 `json:"end_latlng"`
-	ExternalID         string    `json:"external_id"`
-	GearID             string    `json:"gear_id"`
-	HideFromHome       bool      `json:"hide_from_home"`
-	ID                 int64     `json:"id"`
-	Name               string    `json:"name"`
-	Private            bool      `json:"private"`
-	StartDate          time.Time `json:"start_date"`
-	StartDateLocal     time.Time `json:"start_date_local"`
-	StartLatlng        []float64 `json:"start_latlng"`
-	TotalElevationGain float64   `json:"total_elevation_gain"`
-	Trainer            bool      `json:"trainer"`
-	Type               string    `json:"type"`
-	WorkoutType        int       `json:"workout_type"`
-}
-
-// Athlete holds the subset of athlete data we need from the Strava API.
-type Athlete struct {
-	ID int64 `json:"id"`
+	Commute        bool      `json:"commute"`
+	Description    string    `json:"description"`
+	Distance       float64   `json:"distance"`
+	ElapsedTime    int64     `json:"elapsed_time"`
+	EndLatlng      []float64 `json:"end_latlng"`
+	ExternalID     string    `json:"external_id"`
+	GearID         string    `json:"gear_id"`
+	HideFromHome   bool      `json:"hide_from_home"`
+	ID             int64     `json:"id"`
+	Name           string    `json:"name"`
+	Private        bool      `json:"private"`
+	StartDate      time.Time `json:"start_date"`
+	StartDateLocal time.Time `json:"start_date_local"`
+	StartLatlng    []float64 `json:"start_latlng"`
+	Trainer        bool      `json:"trainer"`
+	Type           string    `json:"type"`
+	WorkoutType    int       `json:"workout_type"`
 }
 
 type UpdatableActivity struct {

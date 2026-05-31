@@ -30,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.Athlete{}, &model.Summit{}); err != nil {
+	if err := db.AutoMigrate(&model.Athlete{}); err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
 	}
 
@@ -113,6 +113,7 @@ func TestUpdateHandler(t *testing.T) {
 		StravaAthleteID:   1,
 		StravaAthleteName: "test",
 		StravaAuthToken:   tokenJSON,
+		LastActivityID:    123,
 	})
 
 	for _, tc := range tests {
@@ -218,7 +219,6 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
-	t.Setenv("ENV", "test")
 
 	rc, mux, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {
@@ -248,128 +248,179 @@ func TestConstructUpdate(t *testing.T) {
 		},
 		{
 			"set dog walking title for early morning long walks",
-			&strava.UpdatableActivity{Name: "Emptying & Exercising the 🐶", Private: false, GearID: "g10043849"},
+			&strava.UpdatableActivity{
+				Name:    "Emptying & Exercising the 🐶",
+				Private: false,
+				GearID:  "g10043849",
+			},
 			"walk_early_morning_long.json",
 		},
 		{
 			"set gear and mute afternoon walks",
-			&strava.UpdatableActivity{HideFromHome: true, GearID: "g10043849"},
+			&strava.UpdatableActivity{
+				HideFromHome: true,
+				GearID:       "g10043849",
+			},
 			"walk_afternoon.json",
 		},
 		{
 			"set gear and mute short early morning walks",
-			&strava.UpdatableActivity{HideFromHome: true, GearID: "g10043849"},
+			&strava.UpdatableActivity{
+				HideFromHome: true,
+				GearID:       "g10043849",
+			},
 			"walk_early_short.json",
 		},
 		{
 			"set humane burpees title and mute",
-			&strava.UpdatableActivity{Name: "Humane Burpees", HideFromHome: true},
+			&strava.UpdatableActivity{
+				Name:         "Humane Burpees",
+				HideFromHome: true,
+			},
 			"humane_burpees.json",
 		},
 		{
 			"prefix and set title from TrainerRoad calendar for TrainerRoad activities",
-			&strava.UpdatableActivity{Name: "TR: Capulin", GearID: "b9880609", Trainer: true},
+			&strava.UpdatableActivity{
+				Name:    "TR: Capulin",
+				GearID:  "b9880609",
+				Trainer: true,
+			},
 			"trainerroad.json",
 		},
 		{
-			"prefix and set title from TrainerRoad calendar for outside ride activities",
-			&strava.UpdatableActivity{Name: "TR: Capulin - Outside", GearID: "b10013574", Trainer: false},
+			"set gear to bike for non-TrainerRoad ride activities",
+			&strava.UpdatableActivity{
+				GearID: "b10013574",
+			},
 			"trainerroad_outside.json",
 		},
 		{
 			"set gear to trainer for Zwift activities",
-			&strava.UpdatableActivity{GearID: "b9880609", Trainer: true},
+			&strava.UpdatableActivity{
+				GearID:  "b9880609",
+				Trainer: true,
+			},
 			"zwift.json",
 		},
 		{
 			"set gear to bike",
-			&strava.UpdatableActivity{GearID: "b10013574"},
+			&strava.UpdatableActivity{
+				GearID: "b10013574",
+			},
 			"ride.json",
 		},
 		{
 			"set rowing title: speed pyramid",
-			&strava.UpdatableActivity{Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work"},
+			&strava.UpdatableActivity{
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
+			},
 			"row_speed_pyramid.json",
 		},
 		{
 			"set rowing title: speed pyramid - the other one",
-			&strava.UpdatableActivity{Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work"},
+			&strava.UpdatableActivity{
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
+			},
 			"row_speed_pyramid_2.json",
 		},
 		{
 			"set rowing title: 8x500",
-			&strava.UpdatableActivity{Name: "8x 500m w/ 3.5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "8x 500m w/ 3.5' Active RI Row",
+			},
 			"row_8x500.json",
 		},
 		{
 			"set rowing title: 8x500 - the other one",
-			&strava.UpdatableActivity{Name: "8x 500m w/ 3.5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "8x 500m w/ 3.5' Active RI Row",
+			},
 			"row_8x500_2.json",
 		},
 		{
 			"set rowing title: 5x1500",
-			&strava.UpdatableActivity{Name: "5x 1500m w/ 5' RI Row"},
+			&strava.UpdatableActivity{
+				Name: "5x 1500m w/ 5' RI Row",
+			},
 			"row_5x1500.json",
 		},
 		{
 			"set rowing title: 4x2000",
-			&strava.UpdatableActivity{Name: "4x 2000m w/5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "4x 2000m w/5' Active RI Row",
+			},
 			"row_4x2000.json",
 		},
 		{
 			"set rowing title: 4x2000 - the other one",
-			&strava.UpdatableActivity{Name: "4x 2000m w/5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "4x 2000m w/5' Active RI Row",
+			},
 			"row_4x2000_2.json",
 		},
 		{
 			"set rowing title: 4x1000",
-			&strava.UpdatableActivity{Name: "4x 1000m /5' RI Row"},
+			&strava.UpdatableActivity{
+				Name: "4x 1000m /5' RI Row",
+			},
 			"row_4x1000.json",
 		},
 		{
 			"set rowing title: waterfall",
-			&strava.UpdatableActivity{Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
+			},
 			"row_waterfall.json",
 		},
 		{
 			"set rowing title: waterfall - the other one",
-			&strava.UpdatableActivity{Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row"},
+			&strava.UpdatableActivity{
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
+			},
 			"row_waterfall_2.json",
 		},
 		{
 			"set rowing title: warmup",
-			&strava.UpdatableActivity{Name: "Warm-up Row", HideFromHome: true},
+			&strava.UpdatableActivity{
+				Name:         "Warm-up Row",
+				HideFromHome: true,
+			},
 			"row_warmup.json",
 		},
 		{
 			"add weather to pop'd description",
-			&strava.UpdatableActivity{Name: "Warm-up Row", HideFromHome: true, Description: "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			&strava.UpdatableActivity{
+				Name:         "Warm-up Row",
+				HideFromHome: true,
+				Description:  "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
 			"row_add_weather.json",
 		},
 		{
 			"set rowing title from first line of description",
-			&strava.UpdatableActivity{Name: "5x 1.5k w/ 5' Active RI", Description: "\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			&strava.UpdatableActivity{
+				Name:        "5x 1.5k w/ 5' Active RI",
+				Description: "\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
 			"row_title_from_first_line.json",
 		},
 		{
 			"add weather to outdoor activity",
-			&strava.UpdatableActivity{GearID: "b10013574", Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			&strava.UpdatableActivity{
+				GearID:      "b10013574",
+				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
 			"outside_ride_add_weather.json",
 		},
 		{
 			"adds weather for pain cave for virtual rides",
-			&strava.UpdatableActivity{GearID: "b9880609", Trainer: true, Description: "Test virtualride description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n"},
+			&strava.UpdatableActivity{
+				GearID:      "b9880609",
+				Trainer:     true,
+				Description: "Test virtualride description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
+			},
 			"virtualride.json",
-		},
-		{
-			"adds summit total for run",
-			&strava.UpdatableActivity{Description: "Test run description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🦶⬆️ 1000m\n"},
-			"summit_add_for_run.json",
-		},
-		{
-			"adds summit total for ride",
-			&strava.UpdatableActivity{GearID: "b10013574", Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🚴‍♂️⬆️ 1234m\n"},
-			"summit_add_for_ride.json",
 		},
 	}
 
@@ -377,35 +428,9 @@ func TestConstructUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var a strava.Activity
 			var resp []byte
-			db := setupTestDB(t)
-
 			// TODO: Hacky AF - replace me
 			if strings.HasPrefix(tc.fixture, "trainerroad") {
 				resp, _ = os.ReadFile("testdata/trainerroad.ics")
-			}
-
-			if strings.HasPrefix(tc.fixture, "summit") {
-				// Read in the fixture file and unmarshal the JSON
-				resp, _ = os.ReadFile("testdata/" + tc.fixture)
-				if err := json.Unmarshal(resp, &a); err != nil {
-					t.Fatalf("unexpected error parsing test input: %v", err)
-				}
-				runGain := 0.0
-				rideGain := 0.0
-				if a.Type == "Ride" {
-					rideGain = a.TotalElevationGain
-				}
-				if a.Type == "Run" {
-					runGain = a.TotalElevationGain
-				}
-
-				// Create a summit record for the test using the total_elevation_gain from the activity
-				db.Create(&model.Summit{
-					AthleteID: int64(1),
-					Year:      int64(a.StartDate.Year()),
-					Run:       runGain,
-					Ride:      rideGain,
-				})
 			}
 
 			mockClient := &MockClient{
@@ -423,9 +448,9 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got, _ := constructUpdate(context.Background(), rc, &a, trcal, db)
+			got, _ := constructUpdate(context.Background(), rc, &a, trcal)
 			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("\nexpected %+v, \ngot %+v", tc.want, got)
+				t.Errorf("expected %+v, got %+v", tc.want, got)
 			}
 		})
 	}
