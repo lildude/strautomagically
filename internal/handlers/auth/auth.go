@@ -73,14 +73,10 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the returned state against the value stored in the cookie.
+	// r.Cookie only ever returns nil or http.ErrNoCookie.
 	stateCookie, err := r.Cookie(oauthStateCookie)
 	if errors.Is(err, http.ErrNoCookie) {
 		slog.Warn("oauth state cookie missing")
-		http.Error(w, "state invalid", http.StatusBadRequest)
-		return
-	}
-	if err != nil {
-		slog.Error("unexpected error reading oauth state cookie", "error", err)
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
