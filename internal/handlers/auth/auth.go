@@ -2,6 +2,10 @@
 package auth
 
 import (
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
@@ -10,6 +14,8 @@ import (
 	"github.com/lildude/strautomagically/internal/strava"
 	"golang.org/x/oauth2"
 )
+
+const oauthStateCookie = "oauth_state"
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
@@ -20,7 +26,6 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	state := r.Form.Get("state")
-	stateToken := os.Getenv("STATE_TOKEN")
 	che, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
 	if err != nil {
 		slog.Error("unable to create redis cache", "error", err)
@@ -35,8 +40,25 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 
 	if state == "" {
 		if authToken.AccessToken == "" {
-			u := strava.OauthConfig.AuthCodeURL(stateToken)
-			slog.Info("redirecting to strava auth", "url", u)
+			// Generate a cryptographically random per-request state to prevent CSRF attacks.
+			b := make([]byte, 16)
+			if _, err := rand.Read(b); err != nil {
+				slog.Error("failed to generate OAuth state", "error", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			oauthState := hex.EncodeToString(b)
+			http.SetCookie(w, &http.Cookie{
+				Name:     oauthStateCookie,
+				Value:    oauthState,
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   true,
+				SameSite: http.SameSiteLaxMode,
+				MaxAge:   600, // 10 minutes
+			})
+			u := strava.OauthConfig.AuthCodeURL(oauthState)
+			slog.Info("redirecting to strava auth")
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
@@ -44,10 +66,26 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if state != stateToken {
+	// Validate the returned state against the value stored in the cookie.
+	stateCookie, err := r.Cookie(oauthStateCookie)
+	if errors.Is(err, http.ErrNoCookie) {
+		slog.Warn("oauth state cookie missing")
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
+	if err != nil || stateCookie.Value == "" || subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	// Clear the state cookie immediately after successful validation to prevent reuse.
+	http.SetCookie(w, &http.Cookie{
+		Name:     oauthStateCookie,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		MaxAge:   -1,
+	})
 	code := r.Form.Get("code")
 	if code == "" {
 		http.Error(w, "code not found", http.StatusBadRequest)
