@@ -73,7 +73,13 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
-	if err != nil || stateCookie.Value == "" || subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
+	if err != nil {
+		slog.Error("unexpected error reading oauth state cookie", "error", err)
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	if stateCookie.Value == "" || subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
+		slog.Warn("oauth state mismatch")
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
@@ -84,6 +90,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
 	code := r.Form.Get("code")
