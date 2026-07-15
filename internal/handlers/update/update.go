@@ -99,7 +99,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	activity, err := strava.GetActivity(r.Context(), sc, webhook.ObjectID)
 	if err != nil {
-		slog.Error("unable to get activity", "error", err)
+		slog.Error("unable to get activity", "error", strings.ReplaceAll(err.Error(), "\n", " "))
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -122,7 +122,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(r.Context(), sc, webhook.ObjectID, update)
 		if err != nil {
-			slog.Error("unable to update activity", "error", err)
+			slog.Error("unable to update activity", "error", strings.ReplaceAll(err.Error(), "\n", " "))
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
