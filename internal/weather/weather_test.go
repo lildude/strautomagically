@@ -3,7 +3,6 @@ package weather
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -83,7 +82,7 @@ func TestGetWeatherWithErrorReturnsEmptyStruct(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	got, err := getWeather(context.Background(), rc, 0, 0, 0)
 	if err == nil {
@@ -293,7 +292,7 @@ func TestGetPollutionWithErrorReturnsQuestionMark(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	latIn := 51.509865
 	lonIn := -0.118092
