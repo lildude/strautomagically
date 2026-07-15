@@ -48,12 +48,13 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			oauthState := hex.EncodeToString(b)
+			secureCookie := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 			http.SetCookie(w, &http.Cookie{
 				Name:     oauthStateCookie,
 				Value:    oauthState,
 				Path:     "/",
 				HttpOnly: true,
-				Secure:   true,
+				Secure:   secureCookie,
 				SameSite: http.SameSiteLaxMode,
 				MaxAge:   600, // 10 minutes
 			})
@@ -89,12 +90,13 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Clear the state cookie immediately after successful validation to prevent reuse.
+	secureCookie := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	http.SetCookie(w, &http.Cookie{
 		Name:     oauthStateCookie,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true,
+		Secure:   secureCookie,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 	})
