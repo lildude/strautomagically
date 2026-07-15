@@ -58,7 +58,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 				MaxAge:   600, // 10 minutes
 			})
 			u := strava.OauthConfig.AuthCodeURL(oauthState)
-			slog.Info("redirecting to strava auth")
+			slog.Info("redirecting to strava auth", "state_len", len(oauthState))
 			http.Redirect(w, r, u, http.StatusFound)
 		} else {
 			http.Redirect(w, r, "/start", http.StatusFound)
@@ -78,7 +78,12 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
-	if stateCookie.Value == "" || subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
+	if stateCookie.Value == "" {
+		slog.Warn("oauth state cookie empty")
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
 		slog.Warn("oauth state mismatch")
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
