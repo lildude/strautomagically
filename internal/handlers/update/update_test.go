@@ -23,7 +23,7 @@ import (
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -133,7 +133,7 @@ func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
 
 func TestConstructUpdate(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	rc, mux, _ := setup()
 	mux.HandleFunc("/data/3.0/onecall/timemachine", func(w http.ResponseWriter, r *http.Request) {

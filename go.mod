@@ -1,8 +1,6 @@
 module github.com/lildude/strautomagically
 
-go 1.23.0
-
-toolchain go1.23.5
+go 1.25.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
@@ -12,7 +10,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lildude/go-aqi v0.0.10
 	golang.org/x/oauth2 v0.27.0
-	golang.org/x/text v0.23.0
+	golang.org/x/text v0.37.0
 )
 
 require (
@@ -22,6 +20,6 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/yuin/gopher-lua v1.1.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
