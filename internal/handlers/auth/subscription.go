@@ -14,15 +14,15 @@ import (
 
 // TODO: Rewrite me as I'm a hacky mess.
 func existingSubscription(ctx context.Context) bool {
-	u := fmt.Sprintf("%s/push_subscriptions?client_id=%s&client_secret=%s",
-		"https://www.strava.com/api/v3",
-		os.Getenv("STRAVA_CLIENT_ID"),
-		os.Getenv("STRAVA_CLIENT_SECRET"))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, http.NoBody)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.strava.com/api/v3/push_subscriptions", http.NoBody)
 	if err != nil {
 		slog.Error("creating push_subscriptions request", "error", err)
 		return false
 	}
+	q := req.URL.Query()
+	q.Set("client_id", os.Getenv("STRAVA_CLIENT_ID"))
+	q.Set("client_secret", os.Getenv("STRAVA_CLIENT_SECRET"))
+	req.URL.RawQuery = q.Encode()
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		slog.Error("GET strava /push_subscriptions", "error", err)
