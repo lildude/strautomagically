@@ -17,6 +17,20 @@ import (
 
 const oauthStateCookie = "oauth_state"
 
+// newStateCookie returns an http.Cookie for the OAuth state with standard security attributes.
+// The Secure flag is set only when the request arrived over HTTPS.
+func newStateCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
+		Name:     oauthStateCookie,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAge,
+	}
+}
+
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
@@ -48,16 +62,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			oauthState := hex.EncodeToString(b)
-			secureCookie := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-			http.SetCookie(w, &http.Cookie{
-				Name:     oauthStateCookie,
-				Value:    oauthState,
-				Path:     "/",
-				HttpOnly: true,
-				Secure:   secureCookie,
-				SameSite: http.SameSiteLaxMode,
-				MaxAge:   600, // 10 minutes
-			})
+			http.SetCookie(w, newStateCookie(r, oauthState, 600))
 			u := strava.OauthConfig.AuthCodeURL(oauthState)
 			slog.Info("redirecting to strava auth", "state_len", len(oauthState))
 			http.Redirect(w, r, u, http.StatusFound)
@@ -90,16 +95,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Clear the state cookie immediately after successful validation to prevent reuse.
-	secureCookie := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
-	http.SetCookie(w, &http.Cookie{
-		Name:     oauthStateCookie,
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   secureCookie,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   -1,
-	})
+	http.SetCookie(w, newStateCookie(r, "", -1))
 	code := r.Form.Get("code")
 	if code == "" {
 		http.Error(w, "code not found", http.StatusBadRequest)
