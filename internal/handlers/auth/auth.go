@@ -20,7 +20,7 @@ const oauthStateCookie = "oauth_state"
 // newStateCookie returns an http.Cookie for the OAuth state with standard security attributes.
 // The Secure flag is set only when the request arrived over HTTPS.
 func newStateCookie(r *http.Request, value string, maxAge int) *http.Cookie {
-	return &http.Cookie{
+	return &http.Cookie{ //nolint:gosec // G124: HttpOnly and SameSite are set explicitly; Secure is set dynamically based on the request protocol
 		Name:     oauthStateCookie,
 		Value:    value,
 		Path:     "/",
