@@ -7,7 +7,7 @@
   ],
   "semanticCommits": "disabled",
   "prBodyTemplate": "{{{table}}}{{{warnings}}}{{{notes}}}{{{changelogs}}}",
-  "prHourlyLimit": 4,
+  "prHourlyLimit": 15,
   "prBodyColumns": [
     "Package",
     "Update",
