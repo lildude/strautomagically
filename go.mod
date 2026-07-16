@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/alicebob/miniredis/v2 v2.30.0
-	github.com/apognu/gocal v0.9.0
+	github.com/apognu/gocal v0.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/jarcoal/httpmock v1.3.0
 	github.com/joho/godotenv v1.5.1
