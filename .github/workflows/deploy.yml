@@ -5,28 +5,43 @@ on:
   workflow_run:
     workflows: [Test]
     types: [completed]
-    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-deployment
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Build & Deploy to Staging
     runs-on: ubuntu-latest
     environment: Staging
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       ((github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.head_branch == 'main') ||
+        (github.event.workflow_run.event == 'pull_request' &&
+         github.event.workflow_run.head_repository.id == github.event.repository.id)))
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      with:
+        persist-credentials: false
+        ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     - name: Build
-      if: github.ref == 'refs/heads/main'
       run: make build_azure
 
     - name: Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
       with:
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 
     - name: 'Deploy to Staging'
-      uses: Azure/functions-action@v1
+      uses: Azure/functions-action@bc63708cc6539760eea18d8a7de4ce8ef5fdf593 # v1
       id: fa
       with:
         app-name: ${{ secrets.FUNCTION_APP }}
@@ -35,18 +50,20 @@ jobs:
         respect-funcignore: true
 
     - name: 'Check Deployment'
+      env:
+        EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
       run: |
         i=0
         while [ $i -le 10 ]; do
           sleep 10
           RESPONSE=$(curl -sv "${{ steps.fa.outputs.app-url }}/start" 2>&1 | grep Strautomagically-Version | cut -d' ' -f3)
-          if [ "${RESPONSE//[$'\t\r\n']}" = "${GITHUB_SHA}" ]; then
+          if [ "${RESPONSE//[$'\t\r\n']}" = "${EXPECTED_SHA}" ]; then
             exit 0
           fi
           i=$((i+1))
         done
         echo "Failed to deploy."
-        echo -e "Exp: ${GITHUB_SHA}\nGot: ${RESPONSE//[$'\t\r\n']}."
+        echo -e "Exp: ${EXPECTED_SHA}\nGot: ${RESPONSE//[$'\t\r\n']}."
         exit 1
 
   release-to-prod:
@@ -54,9 +71,14 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     environment: Production
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main')
     steps:
     - name: Login to Azure
-      uses: azure/login@v1
+      uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
       with:
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 

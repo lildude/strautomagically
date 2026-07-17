@@ -2,17 +2,35 @@
 package auth
 
 import (
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
 	"gorm.io/gorm"
 )
+
+const oauthStateCookie = "oauth_state"
+
+// newStateCookie returns an http.Cookie for the OAuth state with standard security attributes.
+// The Secure flag is set only when the request arrived over HTTPS.
+func newStateCookie(r *http.Request, value string, maxAge int) *http.Cookie {
+	return &http.Cookie{ //nolint:gosec // G124: HttpOnly and SameSite are set explicitly; Secure is set dynamically based on the request protocol
+		Name:     oauthStateCookie,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAge,
+	}
+}
 
 func AuthHandler(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
@@ -21,9 +39,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-
 	state := r.Form.Get("state")
-	stateToken := os.Getenv("STATE_TOKEN")
 
 	db, err := database.InitDB()
 	if err != nil {
@@ -44,17 +60,42 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		if athlete.StravaAuthToken != "" {
 			http.Redirect(w, r, "/start", http.StatusFound)
 		} else {
-			u := strava.OauthConfig.AuthCodeURL(stateToken)
-			slog.Info("redirecting to strava auth", "url", u)
+			// Generate a cryptographically random per-request state to prevent CSRF attacks.
+			b := make([]byte, 16)
+			if _, err := rand.Read(b); err != nil {
+				slog.Error("failed to generate OAuth state", "error", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			oauthState := hex.EncodeToString(b)
+			http.SetCookie(w, newStateCookie(r, oauthState, 600))
+			u := strava.OauthConfig.AuthCodeURL(oauthState)
+			slog.Info("redirecting to strava auth", "state_len", len(oauthState))
 			http.Redirect(w, r, u, http.StatusFound)
 		}
 		return
 	}
 
-	if state != stateToken {
+	// Validate the returned state against the value stored in the cookie.
+	// r.Cookie only ever returns nil or http.ErrNoCookie.
+	stateCookie, err := r.Cookie(oauthStateCookie)
+	if errors.Is(err, http.ErrNoCookie) {
+		slog.Warn("oauth state cookie missing")
 		http.Error(w, "state invalid", http.StatusBadRequest)
 		return
 	}
+	if stateCookie.Value == "" {
+		slog.Warn("oauth state cookie empty")
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(stateCookie.Value), []byte(state)) != 1 {
+		slog.Warn("oauth state mismatch")
+		http.Error(w, "state invalid", http.StatusBadRequest)
+		return
+	}
+	// Clear the state cookie immediately after successful validation to prevent reuse.
+	http.SetCookie(w, newStateCookie(r, "", -1))
 	code := r.Form.Get("code")
 	if code == "" {
 		http.Error(w, "code not found", http.StatusBadRequest)

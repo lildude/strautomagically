@@ -17,7 +17,7 @@ var (
 	OauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("STRAVA_CLIENT_ID"),
 		ClientSecret: os.Getenv("STRAVA_CLIENT_SECRET"),
-		Endpoint: oauth2.Endpoint{
+		Endpoint: oauth2.Endpoint{ //nolint:gosec // G101: These are public OAuth2 endpoint URLs for Strava, not hardcoded credentials
 			AuthURL:  "https://www.strava.com/oauth/authorize",
 			TokenURL: "https://www.strava.com/oauth/token",
 		},

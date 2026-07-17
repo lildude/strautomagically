@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +41,7 @@ func TestGetActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -90,7 +89,7 @@ func TestUpdateActivityError(t *testing.T) {
 	defer teardown()
 
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	mux.HandleFunc("/api/v3/activities/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)

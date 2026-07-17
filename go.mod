@@ -1,17 +1,15 @@
 module github.com/lildude/strautomagically
 
-go 1.23.0
-
-toolchain go1.23.5
+go 1.25.0
 
 require (
-	github.com/apognu/gocal v0.9.0
+	github.com/apognu/gocal v0.9.1
 	github.com/glebarez/sqlite v1.11.0
-	github.com/jarcoal/httpmock v1.3.0
+	github.com/jarcoal/httpmock v1.4.1
 	github.com/joho/godotenv v1.5.1
 	github.com/lildude/go-aqi v0.0.10
-	golang.org/x/oauth2 v0.27.0
-	golang.org/x/text v0.23.0
+	golang.org/x/oauth2 v0.36.0
+	golang.org/x/text v0.40.0
 	gorm.io/gorm v1.25.12
 )
 

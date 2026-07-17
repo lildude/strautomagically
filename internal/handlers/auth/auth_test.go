@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -31,7 +30,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestAuthHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -60,37 +59,38 @@ func TestAuthHandler(t *testing.T) {
 	database.SetTestDB(db)
 	t.Cleanup(func() { database.SetTestDB(nil) })
 
-	t.Setenv("STATE_TOKEN", "test-state-token")
+	const testValidState = "abc123def456ghi7"
 
 	tests := []struct {
-		name  string
-		query string
-		body  string
-		want  int
+		name        string
+		query       string
+		body        string
+		stateCookie string
+		want        int
 	}{
 		{
-			"no state redirects to strava",
-			"",
-			"",
-			http.StatusFound,
+			name:  "no state redirects to strava",
+			query: "",
+			body:  "",
+			want:  http.StatusFound,
 		},
 		{
-			"invalid state",
-			"?state=invalid-state",
-			"",
-			http.StatusBadRequest,
+			name:        "invalid state",
+			query:       "?state=invalid-state",
+			stateCookie: testValidState,
+			want:        http.StatusBadRequest,
 		},
 		{
-			"valid state but no code",
-			"?state=test-state-token",
-			"",
-			http.StatusBadRequest,
+			name:        "valid state but no code",
+			query:       "?state=" + testValidState,
+			stateCookie: testValidState,
+			want:        http.StatusBadRequest,
 		},
 		{
-			"valid state and code",
-			"?state=test-state-token&code=test-code",
-			"",
-			http.StatusFound,
+			name:        "valid state and code",
+			query:       "?state=" + testValidState + "&code=test-code",
+			stateCookie: testValidState,
+			want:        http.StatusFound,
 		},
 	}
 
@@ -99,6 +99,9 @@ func TestAuthHandler(t *testing.T) {
 			req, err := http.NewRequest(http.MethodPost, "/auth"+tc.query, strings.NewReader(tc.body))
 			if err != nil {
 				t.Fatal(err)
+			}
+			if tc.stateCookie != "" {
+				req.AddCookie(&http.Cookie{Name: oauthStateCookie, Value: tc.stateCookie})
 			}
 			rr := httptest.NewRecorder()
 			handler := http.HandlerFunc(AuthHandler)
@@ -113,7 +116,7 @@ func TestAuthHandler(t *testing.T) {
 
 func TestAuthHandlerStoresTokens(t *testing.T) {
 	// Discard logs to avoid polluting test output
-	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	slog.SetDefault(slog.New(slog.DiscardHandler))
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
@@ -142,12 +145,17 @@ func TestAuthHandlerStoresTokens(t *testing.T) {
 	database.SetTestDB(db)
 	t.Cleanup(func() { database.SetTestDB(nil) })
 
-	t.Setenv("STATE_TOKEN", "test-state-token")
+	const testValidState = "abc123def456ghi7"
 
-	req, err := http.NewRequest(http.MethodPost, "/auth?state=test-state-token&code=test-code", strings.NewReader(""))
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"/auth?state="+testValidState+"&code=test-code",
+		strings.NewReader(""),
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.AddCookie(&http.Cookie{Name: oauthStateCookie, Value: testValidState})
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(AuthHandler).ServeHTTP(rr, req)
 

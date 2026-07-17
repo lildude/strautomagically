@@ -34,10 +34,16 @@ Optional: If you want to add weather information to your entries, you will need 
    - `STATE_TOKEN` to any random unique string
    - Optional: `DATABASE_PATH` to override the path to the SQLite `database.db` file.
    - Optional: `OWM_API_KEY` to the OpenWeather API key.
-1. Copy those same settings to `local.settings.json` as it makes it easy to set these in the Azure Functions configuration.
-1. Configure your rules in the `update.go` file. I plan to move this out to a better place in future.
-1. Run: `make start` and then visit the `STRAVA_REDIRECT_URI` URL and authorize the application with Strava.
-1. Go for a run.
+2. Copy those same settings to `local.settings.json` as it makes it easy to set these in the Azure Functions configuration.
+3. Configure your rules in the `update.go` file. I plan to move this out to a better place in future.
+4. Install [`azure-functions-core-tools`](https://learn.microsoft.com/en-us/azure/azure-functions/functions-run-local):
+   ```shell
+   brew tap azure/functions && \
+   brew trust azure/functions && \
+   brew install azure-functions-core-tools@4
+   ```
+5. Run: `make start` and then visit the `STRAVA_REDIRECT_URI` URL and authorize the application with Strava.
+6. Go for a run.
 
 ### Deployment
 
