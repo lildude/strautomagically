@@ -93,9 +93,9 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken || newToken.RefreshToken != authToken.RefreshToken {
-		t, mErr := json.Marshal(newToken) //nolint:gosec // Persist refreshed OAuth token payload for later refresh.
-		if mErr != nil {
-			slog.Error("unable to marshal token", "error", mErr)
+		t, marshalErr := json.Marshal(newToken) //nolint:gosec // Persist refreshed OAuth token payload for later refresh.
+		if marshalErr != nil {
+			slog.Error("unable to marshal token", "error", marshalErr)
 		} else {
 			if err := db.Model(&athlete).Updates(map[string]any{
 				"strava_access_token":  newToken.AccessToken,
