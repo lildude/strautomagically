@@ -46,11 +46,13 @@ reset-auth-token:
 #   "galleryEndpointUrl": "https://gallery.azure.com/",
 #   "managementEndpointUrl": "https://management.core.windows.net/"
 # }
-# Set this in AZURE_RBAC_CREDENTIALS in GitHub Actions secrets
+# Set this in AZURE_RBAC_CREDENTIALS in GitHub Actions secrets - we only need the first 4 fields.
 new-azure-creds:
 	az ad sp create-for-rbac --name "Strautomagically" --role contributor \
-    --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically/providers/Microsoft.Web/sites/strautomagically
+    --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically/providers/Microsoft.Web/sites/strautomagically \
+		--years 5 --json-auth \
+		| jq '{clientId, clientSecret, subscriptionId, tenantId}'
 
-	# az ad sp create-for-rbac --name "Strautomagically" --role contributor \
-  #   --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically
+# az ad sp create-for-rbac --name "Strautomagically" --role contributor \
+#   --scopes /subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/strautomagically
 
