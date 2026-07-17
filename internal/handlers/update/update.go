@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,7 @@ import (
 	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"github.com/lildude/strautomagically/internal/summits"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
 	"gorm.io/gorm"
@@ -121,10 +123,17 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("activity received", "name", activity.Name, "id", activity.ID)
 
+	// Update the summit record for this athlete.
+	if err := summits.UpdateSummit(db, activity); err != nil {
+		slog.Error("unable to update summit record", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	baseURL := &url.URL{Scheme: "https", Host: "api.openweathermap.org", Path: "/data/3.0/onecall"}
 	wclient := client.NewClient(baseURL, nil)
 	trcal := calendarevent.NewCalendarService(http.DefaultClient, "https://api.trainerroad.com/v1/calendar/ics", os.Getenv("TRAINERROAD_CAL_ID"))
-	update, msg := constructUpdate(r.Context(), wclient, activity, trcal)
+	update, msg := constructUpdate(r.Context(), wclient, activity, trcal, db)
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
@@ -158,7 +167,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService) (ua *strava.UpdatableActivity, msg string) {
+func constructUpdate(ctx context.Context, wclient *client.Client, activity *strava.Activity, trcal *calendarevent.CalendarService, db *gorm.DB) (ua *strava.UpdatableActivity, msg string) {
 	var update strava.UpdatableActivity
 	var title string
 	msg = "no activity changes"
@@ -299,6 +308,26 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		}
 		update.Description += wtr
 		msg += " & added weather"
+	}
+
+	summit, err := summits.GetSummitForActivity(db, activity)
+	if err != nil {
+		slog.Error("unable to get summit", "error", err)
+	}
+	if summit != nil && summit.TotalElevationGain > 0 {
+		var summitSymbol string
+		switch summit.Type {
+		case "Run":
+			summitSymbol = "🦶"
+		case "Ride":
+			summitSymbol = "🚴‍♂️"
+		}
+		if summitSymbol != "" {
+			if update.Description != "" {
+				update.Description += "\n"
+			}
+			update.Description += fmt.Sprintf("%s⬆️ %.0fm\n", summitSymbol, summit.TotalElevationGain)
+		}
 	}
 
 	return &update, msg

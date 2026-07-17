@@ -25,12 +25,13 @@ import (
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", strings.ReplaceAll(t.Name(), "/", "_"))
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		t.Fatalf("failed to connect to test database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&model.Athlete{}); err != nil {
+	if err := db.AutoMigrate(&model.Athlete{}, &model.Summit{}); err != nil {
 		t.Fatalf("failed to migrate test database: %v", err)
 	}
 
@@ -422,12 +423,28 @@ func TestConstructUpdate(t *testing.T) {
 			},
 			"virtualride.json",
 		},
+		{
+			"adds summit total for run",
+			&strava.UpdatableActivity{
+				Description: "Test run description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🦶⬆️ 1000m\n",
+			},
+			"summit_add_for_run.json",
+		},
+		{
+			"adds summit total for ride",
+			&strava.UpdatableActivity{
+				GearID:      "b10013574",
+				Description: "Outside ride description\n\nOn the road: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n\n🚴‍♂️⬆️ 1234m\n",
+			},
+			"summit_add_for_ride.json",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var a strava.Activity
 			var resp []byte
+			db := setupTestDB(t)
 			// TODO: Hacky AF - replace me
 			if strings.HasPrefix(tc.fixture, "trainerroad") {
 				resp, _ = os.ReadFile("testdata/trainerroad.ics")
@@ -448,7 +465,24 @@ func TestConstructUpdate(t *testing.T) {
 				t.Errorf("unexpected error parsing test input: %v", err)
 			}
 
-			got, _ := constructUpdate(context.Background(), rc, &a, trcal)
+			if strings.HasPrefix(tc.fixture, "summit") {
+				runGain := 0.0
+				rideGain := 0.0
+				if a.Type == "Run" {
+					runGain = a.TotalElevationGain
+				}
+				if a.Type == "Ride" {
+					rideGain = a.TotalElevationGain
+				}
+				db.Create(&model.Summit{
+					AthleteID: int64(1),
+					Year:      int64(a.StartDate.Year()),
+					Run:       runGain,
+					Ride:      rideGain,
+				})
+			}
+
+			got, _ := constructUpdate(context.Background(), rc, &a, trcal, db)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("expected %+v, got %+v", tc.want, got)
 			}
