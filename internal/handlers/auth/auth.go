@@ -115,7 +115,7 @@ func AuthHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokenJSON, err := json.Marshal(token)
+	tokenJSON, err := json.Marshal(token) //nolint:gosec // Persist Strava OAuth token payload for later refresh.
 	if err != nil {
 		slog.Error("unable to marshal token", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

@@ -93,7 +93,7 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if newToken.AccessToken != authToken.AccessToken || newToken.RefreshToken != authToken.RefreshToken {
-		t, mErr := json.Marshal(newToken)
+		t, mErr := json.Marshal(newToken) //nolint:gosec // Persist refreshed OAuth token payload for later refresh.
 		if mErr != nil {
 			slog.Error("unable to marshal token", "error", mErr)
 		} else {
