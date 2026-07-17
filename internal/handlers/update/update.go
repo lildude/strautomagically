@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,16 +13,17 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
 	"text/template"
 
-	"github.com/lildude/strautomagically/internal/cache"
 	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
 	"github.com/lildude/strautomagically/internal/weather"
 	"golang.org/x/oauth2"
+	"gorm.io/gorm"
 )
 
 func UpdateHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,23 +47,21 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rcache, err := cache.NewRedisCache(r.Context(), os.Getenv("REDIS_URL"))
+	db, err := database.InitDB()
 	if err != nil {
-		slog.Error("unable to create redis cache", "error", err)
+		slog.Error("unable to connect to database", "error", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	// See if we've seen this activity before
-	aid, err := rcache.Get(r.Context(), "strava_activity")
-	if err != nil {
-		slog.Error("unable to get activity id from cache", "error", err)
+	var athlete model.Athlete
+	if err := db.First(&athlete, "strava_athlete_id = ?", webhook.OwnerID).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		slog.Error("unable to query athlete", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
-	// Convert aid to int
-	s, _ := aid.(string)
-	aidInt, _ := strconv.ParseInt(s, 10, 64)
 
-	if os.Getenv("ENV") != "dev" && aidInt == webhook.ObjectID {
+	if athlete.LastActivityID == webhook.ObjectID && os.Getenv("DEBUG") != "1" {
 		w.WriteHeader(http.StatusOK)
 		slog.Info("ignoring repeat event")
 		return
@@ -69,9 +69,15 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create the OAuth http.Client
 	authToken := &oauth2.Token{}
-	err = rcache.GetJSON(r.Context(), "strava_auth_token", &authToken)
-	if err != nil {
-		slog.Error("unable to get token", "error", err)
+	if athlete.StravaAuthToken != "" {
+		if err := json.Unmarshal([]byte(athlete.StravaAuthToken), authToken); err != nil {
+			slog.Error("unable to unmarshal Strava auth token", "error", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+	}
+	if authToken.AccessToken == "" {
+		slog.Error("no access token found")
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
@@ -86,13 +92,22 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		slog.Error("unable to refresh token", "error", err)
 		return
 	}
-	if newToken.AccessToken != authToken.AccessToken {
-		err = rcache.SetJSON(r.Context(), "strava_auth_token", newToken)
-		if err != nil {
-			slog.Error("unable to store token", "error", err)
-			return
+	if newToken.AccessToken != authToken.AccessToken || newToken.RefreshToken != authToken.RefreshToken {
+		t, marshalErr := json.Marshal(newToken) //nolint:gosec // Persist refreshed OAuth token payload for later refresh.
+		if marshalErr != nil {
+			slog.Error("unable to marshal token", "error", marshalErr)
+		} else {
+			if err := db.Model(&athlete).Updates(map[string]any{
+				"strava_access_token":  newToken.AccessToken,
+				"strava_auth_token":    string(t),
+				"strava_refresh_token": newToken.RefreshToken,
+			}).Error; err != nil {
+				slog.Error("unable to store refreshed token", "error", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+			slog.Info("updated token")
 		}
-		slog.Info("updated token")
 	}
 
 	sc := client.NewClient(surl, tc)
@@ -128,12 +143,13 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		slog.Info("activity updated", "name", updated.Name, "id", updated.ID, "msg", msg)
+	}
 
-		// Cache activity ID if we've succeeded
-		err = rcache.Set(r.Context(), "strava_activity", webhook.ObjectID)
-		if err != nil {
-			slog.Error("unable to cache activity id", "error", err)
-		}
+	// Record the last activity ID we've processed for this athlete
+	if err := db.Model(&athlete).Update("last_activity_id", webhook.ObjectID).Error; err != nil {
+		slog.Error("unable to store last activity id", "error", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)

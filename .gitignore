@@ -19,3 +19,4 @@ tmp/
 .env.prod
 strautomagically
 local.settings.json
+database.db

@@ -9,6 +9,7 @@ import (
 	// Autoloads .env file to supply environment variables.
 	_ "github.com/joho/godotenv/autoload"
 
+	"github.com/lildude/strautomagically/internal/database"
 	"github.com/lildude/strautomagically/internal/handlers/auth"
 	"github.com/lildude/strautomagically/internal/handlers/callback"
 	"github.com/lildude/strautomagically/internal/handlers/update"
@@ -17,6 +18,12 @@ import (
 var Version = "dev"
 
 func main() {
+	// Initialise the SQLite database and run any schema migrations.
+	if _, err := database.InitDB(); err != nil {
+		slog.Error("failed to initialise database", "error", err)
+		os.Exit(1)
+	}
+
 	port := ":8080"
 	if val, ok := os.LookupEnv("FUNCTIONS_CUSTOMHANDLER_PORT"); ok {
 		port = ":" + val

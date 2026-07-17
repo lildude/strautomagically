@@ -14,12 +14,28 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/alicebob/miniredis/v2"
+	"github.com/glebarez/sqlite"
 	"github.com/jarcoal/httpmock"
 	"github.com/lildude/strautomagically/internal/calendarevent"
 	"github.com/lildude/strautomagically/internal/client"
+	"github.com/lildude/strautomagically/internal/database"
+	"github.com/lildude/strautomagically/internal/model"
 	"github.com/lildude/strautomagically/internal/strava"
+	"gorm.io/gorm"
 )
+
+func setupTestDB(t *testing.T) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to connect to test database: %v", err)
+	}
+
+	if err := db.AutoMigrate(&model.Athlete{}); err != nil {
+		t.Fatalf("failed to migrate test database: %v", err)
+	}
+
+	return db
+}
 
 func TestUpdateHandler(t *testing.T) {
 	// Discard logs to avoid polluting test output
@@ -49,64 +65,59 @@ func TestUpdateHandler(t *testing.T) {
 	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/2.5/air_pollution/history",
 		httpmock.NewStringResponder(200, string(aqi)))
 
+	t.Setenv("ENV", "test")
+
 	tests := []struct {
 		name        string
 		webhookBody string
-		redis       []string // Used to seed Redis with the expected values for the tests
 		wantStatus  int
 	}{
 		{
 			"no webhook body",
 			``,
-			[]string{"", ""},
 			400,
 		},
 		{
 			"invalid JSON in webhook body",
 			`{"foo: "bar"}`,
-			[]string{"", ""},
 			400,
 		},
 		{
 			"non-create event",
 			`{"aspect_type": "update"}`,
-			[]string{"", ""},
 			200,
 		},
 		{
-			"unresponsive redis",
-			`{"aspect_type": "create", "object_id": 123}`,
-			[]string{"", ""},
+			"create event for unknown athlete",
+			`{"owner_id": 999, "aspect_type": "create", "object_id": 789}`,
 			500,
 		},
 		{
 			"repeat event",
-			`{"aspect_type": "create", "object_id": 123}`,
-			[]string{token, "123"},
+			`{"owner_id": 1, "aspect_type": "create", "object_id": 123}`,
 			200,
 		},
 		{
 			"create event",
-			`{"aspect_type": "create", "object_id": 456}`,
-			[]string{token, ""},
+			`{"owner_id": 1, "aspect_type": "create", "object_id": 456}`,
 			200,
 		},
 	}
 
-	r := miniredis.RunT(t)
-	defer r.Close()
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+	t.Cleanup(func() { database.SetTestDB(nil) })
+
+	tokenJSON := `{"access_token":"123456789"}`
+	db.Create(&model.Athlete{
+		StravaAthleteID:   1,
+		StravaAthleteName: "test",
+		StravaAuthToken:   tokenJSON,
+		LastActivityID:    123,
+	})
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Pre-populate Redis with the expected values, if set, and set REDIS_URL to use the miniredis instance
-			if tc.redis[0] != "" {
-				t.Setenv("REDIS_URL", "redis://"+r.Addr())
-				r.Set("strava_auth_token", tc.redis[0])
-				r.Set("strava_activity", tc.redis[1])
-			} else {
-				t.Setenv("REDIS_URL", "foobar") // Forces a quick failure mimicking a non-existent Redis instance
-			}
-
 			req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(tc.webhookBody))
 			if err != nil {
 				t.Fatal(err)
@@ -120,6 +131,80 @@ func TestUpdateHandler(t *testing.T) {
 				t.Errorf("%s: handler returned wrong status code: got %d want %d", tc.name, status, tc.wantStatus)
 			}
 		})
+	}
+}
+
+func TestUpdateHandlerStoresRefreshedTokens(t *testing.T) {
+	// Discard logs to avoid polluting test output
+	slog.SetDefault(slog.New(slog.DiscardHandler))
+
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	tokenJSON, _ := os.ReadFile("testdata/oauth_token.json")
+	activity, _ := os.ReadFile("testdata/activity.json")
+	weather, _ := os.ReadFile("testdata/weather.json")
+	aqi, _ := os.ReadFile("testdata/aqi.json")
+
+	httpmock.RegisterResponder("POST", "https://www.strava.com/oauth/token",
+		httpmock.NewStringResponder(200, string(tokenJSON)))
+
+	httpmock.RegisterResponder("GET", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, string(activity)))
+
+	httpmock.RegisterResponder("PUT", `=~^https://www\.strava\.com/api/v3/activities/\d+\z`,
+		httpmock.NewStringResponder(200, string(activity)))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/3.0/onecall/timemachine",
+		httpmock.NewStringResponder(200, string(weather)))
+
+	httpmock.RegisterResponder("GET", "https://api.openweathermap.org/data/2.5/air_pollution/history",
+		httpmock.NewStringResponder(200, string(aqi)))
+
+	t.Setenv("ENV", "test")
+
+	db := setupTestDB(t)
+	database.SetTestDB(db)
+	t.Cleanup(func() { database.SetTestDB(nil) })
+
+	const athleteID = int64(42)
+	db.Create(&model.Athlete{
+		StravaAthleteID: athleteID,
+		StravaAuthToken: `{"access_token":"old-access-token","refresh_token":"old-refresh-token","expiry":"2000-01-01T00:00:00Z"}`,
+	})
+
+	req, err := http.NewRequest(http.MethodGet, "/webhook", strings.NewReader(`{"owner_id": 42, "aspect_type": "create", "object_id": 456}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	http.HandlerFunc(UpdateHandler).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("handler returned wrong status code: got %d want %d", rr.Code, http.StatusOK)
+	}
+
+	var athlete model.Athlete
+	if err := db.First(&athlete, "strava_athlete_id = ?", athleteID).Error; err != nil {
+		t.Fatalf("failed to load athlete: %v", err)
+	}
+
+	if athlete.StravaAccessToken != "123456789" {
+		t.Errorf("unexpected access token: got %q want %q", athlete.StravaAccessToken, "123456789")
+	}
+	if athlete.StravaRefreshToken != "987654321" {
+		t.Errorf("unexpected refresh token: got %q want %q", athlete.StravaRefreshToken, "987654321")
+	}
+
+	var storedToken map[string]any
+	if err := json.Unmarshal([]byte(athlete.StravaAuthToken), &storedToken); err != nil {
+		t.Fatalf("expected valid token JSON to be stored: %v", err)
+	}
+	if storedToken["access_token"] != "123456789" {
+		t.Errorf("unexpected auth token payload access token: got %#v want %q", storedToken["access_token"], "123456789")
+	}
+	if storedToken["refresh_token"] != "987654321" {
+		t.Errorf("unexpected auth token payload refresh token: got %#v want %q", storedToken["refresh_token"], "987654321")
 	}
 }
 

@@ -14,3 +14,4 @@ Procfile
 Makefile
 .golangci.toml
 cmd/
+database.db
