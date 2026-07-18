@@ -56,6 +56,7 @@ type UpdatableActivity struct {
 	Private      bool   `json:"private,omitempty"`
 	Trainer      bool   `json:"trainer,omitempty"`
 	Type         string `json:"type,omitempty"`
+	WithPet      bool   `json:"with_pet,omitempty"`
 }
 
 type WebhookPayload struct {

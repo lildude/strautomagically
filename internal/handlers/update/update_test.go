@@ -167,6 +167,7 @@ func TestConstructUpdate(t *testing.T) {
 				Name:    "Emptying & Exercising the 🐶",
 				Private: false,
 				GearID:  "g10043849",
+				WithPet: true,
 			},
 			"walk_early_morning_long.json",
 		},

@@ -240,6 +240,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 			update.Name = "Emptying & Exercising the 🐶"
 			update.Private = false
 			update.GearID = shoes
+			update.WithPet = true
 			msg = "set dog walking title and made public"
 		} else {
 			// Mute walks and set shoes
