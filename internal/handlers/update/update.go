@@ -113,8 +113,8 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Don't update the activity if DEBUG=1
 	if os.Getenv("DEBUG") == "1" {
-		slog.Debug("update", "update", update)
-		slog.Debug("message", "msg", msg)
+		slog.Debug("update", "update", update) //nolint:gosec // G706 noise
+		slog.Debug("message", "msg", msg)      //nolint:gosec // G706 noise
 		return
 	}
 
@@ -122,12 +122,12 @@ func UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		var updated *strava.Activity
 		updated, err = strava.UpdateActivity(r.Context(), sc, webhook.ObjectID, update)
 		if err != nil {
-			slog.Error("unable to update activity", "error", sanitizeForLog(err.Error()))
+			slog.Error("unable to update activity", "error", sanitizeForLog(err.Error())) //nolint:gosec // G706 noise
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		slog.Info("activity updated", "name", updated.Name, "id", updated.ID, "msg", msg)
+		slog.Info("activity updated", "name", updated.Name, "id", updated.ID, "msg", msg) //nolint:gosec // G706 noise
 
 		// Cache activity ID if we've succeeded
 		err = rcache.Set(r.Context(), "strava_activity", webhook.ObjectID)
@@ -172,7 +172,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 				}
 
 				if event != nil && event.Summary != "" {
-					slog.Info("found TrainerRoad calendar event", "summary", event.Summary)
+					slog.Info("found TrainerRoad calendar event", "summary", event.Summary) //nolint:gosec // G706 noise
 					title = "TR: " + event.Summary
 				} else {
 					slog.Info("no TrainerRoad calendar event found")
