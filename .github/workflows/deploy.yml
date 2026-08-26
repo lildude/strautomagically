@@ -36,7 +36,7 @@ jobs:
       run: make build_azure
 
     - name: Login to Azure
-      uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3
+      uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
       with:
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 
@@ -78,7 +78,7 @@ jobs:
        github.event.workflow_run.head_branch == 'main')
     steps:
     - name: Login to Azure
-      uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3
+      uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c # v3
       with:
         creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 
