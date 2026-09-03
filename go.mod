@@ -3,7 +3,7 @@ module github.com/lildude/strautomagically
 go 1.25.0
 
 require (
-	github.com/alicebob/miniredis/v2 v2.38.0
+	github.com/alicebob/miniredis/v2 v2.39.0
 	github.com/apognu/gocal v0.9.1
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/jarcoal/httpmock v1.4.2
