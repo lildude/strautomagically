@@ -9,7 +9,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.2
 	github.com/joho/godotenv v1.5.1
 	github.com/lildude/go-aqi v0.0.10
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/oauth2 v0.38.0
 	golang.org/x/text v0.43.0
 )
 
