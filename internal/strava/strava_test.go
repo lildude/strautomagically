@@ -84,49 +84,6 @@ func TestUpdateActivity(t *testing.T) {
 	}
 }
 
-func TestUpdateActivitySportType(t *testing.T) {
-	tests := []struct {
-		name   string
-		update UpdatableActivity
-		want   map[string]any
-	}{
-		{
-			name:   "convert to virtual rowing alongside other changes",
-			update: UpdatableActivity{SportType: "VirtualRow", Name: "Warm-up Row", HideFromHome: true},
-			want:   map[string]any{"sport_type": "VirtualRow", "name": "Warm-up Row", "hide_from_home": true},
-		},
-		{
-			name:   "omit sport type when unchanged",
-			update: UpdatableActivity{Name: "Updated activity"},
-			want:   map[string]any{"name": "Updated activity"},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			rc, mux, teardown := setup()
-			defer teardown()
-
-			var got map[string]any
-			mux.HandleFunc("/api/v3/activities/123", func(w http.ResponseWriter, r *http.Request) {
-				if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
-					t.Errorf("decoding update request: %v", err)
-					w.WriteHeader(http.StatusBadRequest)
-					return
-				}
-				w.WriteHeader(http.StatusNoContent)
-			})
-
-			if _, err := UpdateActivity(context.Background(), rc, 123, &tc.update); err != nil {
-				t.Fatal(err)
-			}
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("expected payload %+v, got %+v", tc.want, got)
-			}
-		})
-	}
-}
-
 func TestUpdateActivityError(t *testing.T) {
 	rc, mux, teardown := setup()
 	defer teardown()

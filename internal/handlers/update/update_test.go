@@ -227,89 +227,72 @@ func TestConstructUpdate(t *testing.T) {
 			"ride.json",
 		},
 		{
-			"convert rowing with an unrecognized title to virtual rowing",
-			&strava.UpdatableActivity{
-				SportType: "VirtualRow",
-			},
-			"row_unrecognized.json",
-		},
-		{
 			"set rowing title: speed pyramid",
 			&strava.UpdatableActivity{
-				Name:      "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
-				SportType: "VirtualRow",
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
 			},
 			"row_speed_pyramid.json",
 		},
 		{
 			"set rowing title: speed pyramid - the other one",
 			&strava.UpdatableActivity{
-				Name:      "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
-				SportType: "VirtualRow",
+				Name: "Speed Pyramid Row w/ 1.5' Active RI per 250m work",
 			},
 			"row_speed_pyramid_2.json",
 		},
 		{
 			"set rowing title: 8x500",
 			&strava.UpdatableActivity{
-				Name:      "8x 500m w/ 3.5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "8x 500m w/ 3.5' Active RI Row",
 			},
 			"row_8x500.json",
 		},
 		{
 			"set rowing title: 8x500 - the other one",
 			&strava.UpdatableActivity{
-				Name:      "8x 500m w/ 3.5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "8x 500m w/ 3.5' Active RI Row",
 			},
 			"row_8x500_2.json",
 		},
 		{
 			"set rowing title: 5x1500",
 			&strava.UpdatableActivity{
-				Name:      "5x 1500m w/ 5' RI Row",
-				SportType: "VirtualRow",
+				Name: "5x 1500m w/ 5' RI Row",
 			},
 			"row_5x1500.json",
 		},
 		{
 			"set rowing title: 4x2000",
 			&strava.UpdatableActivity{
-				Name:      "4x 2000m w/5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "4x 2000m w/5' Active RI Row",
 			},
 			"row_4x2000.json",
 		},
 		{
 			"set rowing title: 4x2000 - the other one",
 			&strava.UpdatableActivity{
-				Name:      "4x 2000m w/5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "4x 2000m w/5' Active RI Row",
 			},
 			"row_4x2000_2.json",
 		},
 		{
 			"set rowing title: 4x1000",
 			&strava.UpdatableActivity{
-				Name:      "4x 1000m /5' RI Row",
-				SportType: "VirtualRow",
+				Name: "4x 1000m /5' RI Row",
 			},
 			"row_4x1000.json",
 		},
 		{
 			"set rowing title: waterfall",
 			&strava.UpdatableActivity{
-				Name:      "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
 			},
 			"row_waterfall.json",
 		},
 		{
 			"set rowing title: waterfall - the other one",
 			&strava.UpdatableActivity{
-				Name:      "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
-				SportType: "VirtualRow",
+				Name: "Waterfall of 3k, 2.5k, 2k w/ 5' Active RI Row",
 			},
 			"row_waterfall_2.json",
 		},
@@ -318,7 +301,6 @@ func TestConstructUpdate(t *testing.T) {
 			&strava.UpdatableActivity{
 				Name:         "Warm-up Row",
 				HideFromHome: true,
-				SportType:    "VirtualRow",
 			},
 			"row_warmup.json",
 		},
@@ -328,7 +310,6 @@ func TestConstructUpdate(t *testing.T) {
 				Name:         "Warm-up Row",
 				HideFromHome: true,
 				Description:  "Test activity description\n\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-				SportType:    "VirtualRow",
 			},
 			"row_add_weather.json",
 		},
@@ -337,7 +318,6 @@ func TestConstructUpdate(t *testing.T) {
 			&strava.UpdatableActivity{
 				Name:        "5x 1.5k w/ 5' Active RI",
 				Description: "\nThe Pain Cave: ☀️ Clear Sky | 🌡 19-19°C | 👌 16°C | 💦 64-64% | AQI 💚\n",
-				SportType:   "VirtualRow",
 			},
 			"row_title_from_first_line.json",
 		},

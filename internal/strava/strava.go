@@ -54,7 +54,6 @@ type UpdatableActivity struct {
 	HideFromHome bool   `json:"hide_from_home,omitempty"`
 	Name         string `json:"name,omitempty"`
 	Private      bool   `json:"private,omitempty"`
-	SportType    string `json:"sport_type,omitempty"`
 	Trainer      bool   `json:"trainer,omitempty"`
 	Type         string `json:"type,omitempty"`
 	WithPet      bool   `json:"with_pet,omitempty"`

@@ -189,9 +189,6 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		msg = "prefixed name of ride with TR and set gear"
 
 	case "Rowing":
-		update.SportType = "VirtualRow"
-		msg = "set sport type to VirtualRow"
-
 		// Workouts created in ErgZone will have the name in the first line of the description
 		lines := strings.Split(activity.Description, "\n")
 		if len(lines) > 0 {
@@ -224,7 +221,7 @@ func constructUpdate(ctx context.Context, wclient *client.Client, activity *stra
 		}
 		update.Name = title
 		if title != "" {
-			msg += " & set title to " + title
+			msg = "set title to " + title
 		}
 
 	// Nothing to change here yet
