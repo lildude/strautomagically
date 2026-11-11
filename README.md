@@ -23,6 +23,8 @@ Optional: If you want to add weather information to your entries, you will need 
 
 ### Running Locally
 
+Use the Go version declared in [go.mod](go.mod). Run `go env -w GOTOOLCHAIN=auto` locally so Go downloads the required toolchain when your installed version is older. The dev container enables this automatically; rebuild it after changing its configuration. Tests and deployment in GitHub Actions also use this version, and Renovate proposes updates to keep it current.
+
 1. Create a `.env` file and set the following:
    - `STRAVA_CLIENT_ID` & `STRAVA_CLIENT_SECRET` to the values from Strava
    - `STRAVA_REDIRECT_URI` to the callback domain you registered followed by `/auth`, eg `http://localhost:8080/auth`
