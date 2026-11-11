@@ -68,8 +68,7 @@ func TestNewRequest(t *testing.T) {
 	})
 
 	t.Run("request with invalid JSON", func(tc *testing.T) {
-		type T struct{ A map[any]any }
-		_, err := c.NewRequest(context.Background(), "GET", ".", &T{})
+		_, err := c.NewRequest(context.Background(), "GET", ".", make(chan int))
 		if err == nil {
 			tc.Error("Expected error")
 		}
