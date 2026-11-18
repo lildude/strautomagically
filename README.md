@@ -13,6 +13,10 @@ If I spot a fork and find something I like that you've done, I will pinch it ðŸ˜
 
 ## Usage
 
+### Strava identifiers
+
+Strava will generate 64-bit activity and athlete IDs after June 1, 2027. Activity IDs and webhook object/owner IDs already use Go's `int64`, preserving numeric IDs through API requests and Redis deduplication without floating-point conversion. We continue to use numeric IDs rather than the optional `id_str` field. The athlete ID in the OAuth response is not used.
+
 ### Prerequisites
 
 You will need to create an API application in [your settings on Strava](https://www.strava.com/settings/api) and take note of the client ID and secret.

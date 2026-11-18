@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/alicebob/miniredis/v2"
@@ -118,6 +119,56 @@ func TestUpdateHandler(t *testing.T) {
 
 			if status := rr.Code; status != tc.wantStatus {
 				t.Errorf("%s: handler returned wrong status code: got %d want %d", tc.name, status, tc.wantStatus)
+			}
+		})
+	}
+}
+
+func TestUpdateHandler64BitIDs(t *testing.T) {
+	t.Setenv("ENV", "test")
+	t.Setenv("DEBUG", "")
+	r := miniredis.RunT(t)
+	t.Setenv("REDIS_URL", "redis://"+r.Addr())
+	if err := r.Set("strava_auth_token", `{"access_token":"test","token_type":"Bearer"}`); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, id := range []string{"9007199254740992", "9007199254740993", "9223372036854775807"} {
+		t.Run(id, func(t *testing.T) {
+			var gets, puts atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if req.URL.Path != "/api/v3/activities/"+id {
+					t.Errorf("unexpected activity path: %s", req.URL.Path)
+				}
+				switch req.Method {
+				case http.MethodGet:
+					gets.Add(1)
+				case http.MethodPut:
+					puts.Add(1)
+				default:
+					t.Errorf("unexpected method: %s", req.Method)
+				}
+				fmt.Fprintf(w, `{"id":%s,"id_str":"%s","type":"Ride","description":"AQI"}`, id, id)
+			}))
+			defer server.Close()
+			baseURL := strava.BaseURL
+			strava.BaseURL = server.URL
+			t.Cleanup(func() { strava.BaseURL = baseURL })
+
+			for range 2 {
+				body := `{"aspect_type":"create","object_type":"activity","object_id":` + id + `}`
+				req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(body))
+				rr := httptest.NewRecorder()
+				UpdateHandler(rr, req)
+				if rr.Code != http.StatusOK {
+					t.Fatalf("status = %d, want %d", rr.Code, http.StatusOK)
+				}
+				if gets.Load() != 1 || puts.Load() != 1 {
+					t.Fatalf("API calls = (%d GET, %d PUT), want (1 GET, 1 PUT)", gets.Load(), puts.Load())
+				}
+				if got, err := r.Get("strava_activity"); err != nil || got != id {
+					t.Fatalf("cached ID = %q, error = %v, want %q", got, err, id)
+				}
 			}
 		})
 	}
